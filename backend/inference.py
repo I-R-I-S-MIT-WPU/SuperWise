@@ -13,6 +13,7 @@ class SuperannuationInference:
         self.models = {}
         self.scaler = None
         self.label_encoders = {}
+        self.csv_path = "case1.csv"  # Add csv_path attribute
         
         # Load models and data
         self.load_models()

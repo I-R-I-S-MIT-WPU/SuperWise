@@ -8,6 +8,7 @@ import { AdminAuthProvider } from "@/contexts/AdminAuthContext";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import ResetPassword from "./pages/ResetPassword";
 import ProfileSetup from "./pages/ProfileSetup";
 import RetirementCalculator from "./pages/RetirementCalculator";
 import Admin from "./pages/Admin";
@@ -25,16 +26,20 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <Routes>
-              <Route path="/" element={<Login />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/signup" element={<Signup />} />
-              <Route path="/profile-setup" element={<ProfileSetup />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/retirement-calculator/:userId" element={<RetirementCalculator />} />
-              <Route path="/admin" element={<Admin />} />
-              <Route path="/user-manager" element={<UserManager />} />
+              <Route path='/' element={<Login />} />
+              <Route path='/login' element={<Login />} />
+              <Route path='/signup' element={<Signup />} />
+              <Route path='/reset-password' element={<ResetPassword />} />
+              <Route path='/profile-setup' element={<ProfileSetup />} />
+              <Route path='/dashboard' element={<Dashboard />} />
+              <Route
+                path='/retirement-calculator/:userId'
+                element={<RetirementCalculator />}
+              />
+              <Route path='/admin' element={<Admin />} />
+              <Route path='/user-manager' element={<UserManager />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
+              <Route path='*' element={<NotFound />} />
             </Routes>
           </BrowserRouter>
         </TooltipProvider>

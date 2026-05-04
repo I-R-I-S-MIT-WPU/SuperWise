@@ -1,5 +1,7 @@
 import asyncio
 import os
+import time
+import random
 from typing import Any, Dict, Optional
 
 import numpy as np
@@ -84,6 +86,8 @@ class ChatRequest(BaseModel):
 
 class UserSignupRequest(BaseModel):
     name: str
+    username: str  # Email for login
+    password: str  # Password for login
     age: int
     gender: str
     country: str
@@ -346,23 +350,20 @@ async def chat_with_ai(request: ChatRequest):
 async def signup_user(request: UserSignupRequest):
     """Register a new user"""
     try:
-        if not inference_engine:
-            raise HTTPException(
-                status_code=500, detail="Inference engine not initialized"
-            )
-
+        from bcrypt import hashpw, gensalt
+        
         # Generate a new User_ID
-        import pandas as pd
+        new_user_id = f"U{int(time.time())}{random.randint(1000, 9999)}"
+        
+        # Hash password
+        hashed_password = hashpw(request.password.encode('utf-8'), gensalt()).decode('utf-8')
 
-        existing_ids = inference_engine.df["User_ID"].tolist()
-        user_numbers = [int(uid[1:]) for uid in existing_ids if uid.startswith("U")]
-        next_number = max(user_numbers) + 1 if user_numbers else 1000
-        new_user_id = f"U{next_number}"
-
-        # Create new user data
+        # Create user data for Supabase
         new_user_data = {
             "User_ID": new_user_id,
             "Name": request.name,
+            "username": request.username,
+            "Password": hashed_password,
             "Age": request.age,
             "Gender": request.gender,
             "Country": request.country,
@@ -374,8 +375,7 @@ async def signup_user(request: UserSignupRequest):
             "Contribution_Amount": request.contribution_amount,
             "Contribution_Frequency": request.contribution_frequency,
             "Employer_Contribution": request.employer_contribution,
-            "Total_Annual_Contribution": request.contribution_amount
-            + request.employer_contribution,
+            "Total_Annual_Contribution": request.contribution_amount + request.employer_contribution,
             "Years_Contributed": request.years_contributed,
             "Investment_Type": request.investment_type,
             "Fund_Name": request.fund_name,
@@ -389,42 +389,26 @@ async def signup_user(request: UserSignupRequest):
             "Insurance_Coverage": request.insurance_coverage,
             "Pension_Type": request.pension_type,
             "Withdrawal_Strategy": request.withdrawal_strategy,
-            # Calculate derived fields
-            "Annual_Return_Rate": 7.0,  # Default assumption
-            "Volatility": 15.0,  # Default assumption
-            "Fees_Percentage": 1.0,  # Default assumption
-            "Projected_Pension_Amount": request.current_savings
-            * (1.07 ** (request.retirement_age_goal - request.age)),
-            "Expected_Annual_Payout": 0,
-            "Inflation_Adjusted_Payout": 0,
-            "Years_of_Payout": 0,
-            "Survivor_Benefits": "Standard",
-            "Tax_Benefits_Eligibility": True,
-            "Government_Pension_Eligibility": request.annual_income < 50000,
-            "Private_Pension_Eligibility": True,
-            "Portfolio_Diversity_Score": 0.5,
-            "Savings_Rate": (
-                request.contribution_amount / request.annual_income
-                if request.annual_income > 0
-                else 0
-            ),
-            "Debt_Level": "Low",  # Default assumption
+            "Annual_Return_Rate": 7.0,
+            "Volatility": 15.0,
+            "Fees_Percentage": 1.0,
+            "Projected_Pension_Amount": request.current_savings * (1.07 ** (request.retirement_age_goal - request.age)),
         }
-
-        # Add to dataframe
-        new_row = pd.DataFrame([new_user_data])
-        inference_engine.df = pd.concat(
-            [inference_engine.df, new_row], ignore_index=True
-        )
-
-        # Save updated data
-        inference_engine.df.to_csv(inference_engine.csv_path, index=False)
-
-        return {
-            "user_id": new_user_id,
-            "message": f"User {request.name} registered successfully",
-            "user_data": new_user_data,
-        }
+        
+        # Save to Supabase
+        from supabase_config import supabase, USER_PROFILES_TABLE
+        response = supabase.table(USER_PROFILES_TABLE).insert(new_user_data).execute()
+        
+        if response.data:
+            print(f"User {request.username} created successfully with User_ID: {new_user_id}")
+            return {
+                "user_id": new_user_id,
+                "message": f"User {request.name} registered successfully",
+                "user_data": new_user_data,
+            }
+        else:
+            raise Exception("Failed to insert user into database")
+            
     except Exception as e:
         print(f"Signup error: {e}")
         raise HTTPException(status_code=500, detail=str(e))

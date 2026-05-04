@@ -1,6 +1,11 @@
 import os
+import time
+import secrets
+import hashlib
+from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from supabase import create_client, Client
+from bcrypt import hashpw, checkpw, gensalt
 
 # Load environment variables from project root
 env_path = os.path.join(os.path.dirname(__file__), "..", ".env")
@@ -213,59 +218,144 @@ class SupabaseService:
     async def login_user(username: str, password: str) -> dict:
         """Login user with username/email and password"""
         try:
-            # Search for user by username or email in MUFG table
-            response = supabase.table(USER_PROFILES_TABLE).select("*").or_(f"username.eq.{username},email.eq.{username}").execute()
+            # Query Supabase only (no CSV fallback)
+            response = supabase.table(USER_PROFILES_TABLE).select("*").eq("username", username).execute()
             
             if not response.data:
                 return {"success": False, "message": "Invalid credentials"}
             
             user_data = response.data[0]
-            stored_password = user_data.get("Password") or user_data.get("password")
+            stored_password = user_data.get("Password") or ""
             
-            # Simple password check (in production, use bcrypt)
-            if stored_password != password:
+            # Verify bcrypt-hashed password
+            try:
+                if stored_password.startswith("$2"):  # bcrypt hash
+                    is_valid = checkpw(password.encode('utf-8'), stored_password.encode('utf-8'))
+                else:  # Fallback for plaintext (during migration)
+                    is_valid = password == stored_password
+            except:
+                is_valid = False
+            
+            if not is_valid:
                 return {"success": False, "message": "Invalid credentials"}
             
             return {
                 "success": True,
                 "userId": user_data.get("User_ID"),
                 "name": user_data.get("Name"),
-                "email": user_data.get("username") or user_data.get("email"),
+                "username": user_data.get("username"),
                 "message": "Login successful"
             }
         except Exception as e:
             print(f"Login error: {e}")
-            return {"success": False, "message": f"Error during login: {str(e)}"}
+            return {"success": False, "message": "Invalid credentials"}
 
     @staticmethod
     async def send_password_reset_email(email: str) -> dict:
-        """Send password reset email"""
+        """Send password reset email with secure token"""
         try:
-            # Check if email exists
-            response = supabase.table(USER_PROFILES_TABLE).select("*").or_(f"username.eq.{email},email.eq.{email}").execute()
+            # Check if user exists
+            response = supabase.table(USER_PROFILES_TABLE).select("*").eq("username", email).execute()
             
             if not response.data:
                 # For security, don't reveal if email exists
                 return {"success": True, "message": "If email exists, a reset link has been sent"}
             
-            # In production, you would generate a secure token and send via email
-            # For now, just return success
-            print(f"Password reset email would be sent to: {email}")
+            user_data = response.data[0]
+            user_id = user_data.get('User_ID')
+            user_name = user_data.get('Name', 'User')
             
-            return {"success": True, "message": "Password reset email sent (check your inbox)"}
+            # Create cryptographically secure token
+            reset_token = secrets.token_urlsafe(32)
+            token_hash = hashlib.sha256(reset_token.encode()).hexdigest()
+            expires_at = (datetime.utcnow() + timedelta(hours=24)).isoformat()
+            
+            # Store token in database (create password_resets table if needed)
+            try:
+                supabase.table("password_resets").insert({
+                    "user_id": user_id,
+                    "token_hash": token_hash,
+                    "expires_at": expires_at,
+                    "used": False
+                }).execute()
+            except:
+                # If table doesn't exist, just send email with token
+                pass
+            
+            reset_link = f"http://localhost:3000/reset-password?token={reset_token}"
+            
+            html_content = f"""
+            <html>
+                <body style="font-family: Arial, sans-serif;">
+                    <h2>Password Reset Request</h2>
+                    <p>Hi {user_name},</p>
+                    <p>You requested a password reset for your MUFG Superannuation account.</p>
+                    <p><a href="{reset_link}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Reset Password</a></p>
+                    <p>If you didn't request this, please ignore this email. This link expires in 24 hours.</p>
+                    <br>
+                    <p>Best regards,<br>MUFG Superannuation Team</p>
+                </body>
+            </html>
+            """
+            
+            try:
+                from email_service import email_service
+                email_sent = email_service.send_email(
+                    to_email=email,
+                    subject="Password Reset - MUFG Superannuation",
+                    html_content=html_content
+                )
+                if email_sent:
+                    print(f"Password reset email sent to: {email}")
+            except Exception as e:
+                print(f"Email service error: {e}")
+                
+            return {"success": True, "message": "If email exists, a reset link has been sent"}
+                
         except Exception as e:
             print(f"Password reset error: {e}")
-            return {"success": False, "message": f"Error sending reset email: {str(e)}"}
+            return {"success": True, "message": "If email exists, a reset link has been sent"}
 
     @staticmethod
     async def reset_password(token: str, new_password: str) -> dict:
-        """Reset password with token"""
+        """Reset password with token validation"""
         try:
-            # In production, you would validate the token first
-            # For now, this is a placeholder
+            # Hash the token to find it in database
+            token_hash = hashlib.sha256(token.encode()).hexdigest()
+            
+            # Find and validate token
+            try:
+                reset_response = supabase.table("password_resets").select("*").eq("token_hash", token_hash).eq("used", False).execute()
+                
+                if not reset_response.data:
+                    return {"success": False, "message": "Invalid or expired reset link"}
+                
+                reset_data = reset_response.data[0]
+                
+                # Check expiration
+                expires_at = datetime.fromisoformat(reset_data.get('expires_at'))
+                if datetime.utcnow() > expires_at:
+                    return {"success": False, "message": "Reset link has expired"}
+                
+                user_id = reset_data.get('user_id')
+            except Exception as db_error:
+                print(f"Token validation error: {db_error}")
+                return {"success": False, "message": "Invalid reset link"}
+            
+            # Hash new password
+            hashed_password = hashpw(new_password.encode('utf-8'), gensalt()).decode('utf-8')
+            
+            # Update user password
+            update_response = supabase.table(USER_PROFILES_TABLE).update({
+                "Password": hashed_password
+            }).eq("User_ID", user_id).execute()
+            
+            # Mark token as used
+            supabase.table("password_resets").update({"used": True}).eq("token_hash", token_hash).execute()
+            
             return {"success": True, "message": "Password reset successful"}
         except Exception as e:
-            print(f"Password reset confirmation error: {e}")
+            print(f"Password reset error: {e}")
             return {"success": False, "message": f"Error resetting password: {str(e)}"}
 
     @staticmethod
