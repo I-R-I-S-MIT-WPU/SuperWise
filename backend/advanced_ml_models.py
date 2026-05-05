@@ -1,18 +1,20 @@
-import pandas as pd
-import numpy as np
-import joblib
-from typing import Dict, List, Any
 import os
-from sklearn.ensemble import RandomForestRegressor, IsolationForest
-from sklearn.neighbors import NearestNeighbors
-from sklearn.preprocessing import StandardScaler, LabelEncoder
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
+import warnings
+from typing import Any, Dict, List
+
+import joblib
+import numpy as np
+import pandas as pd
 import xgboost as xgb
 from scipy.optimize import minimize
-import warnings
-warnings.filterwarnings('ignore')
-from supabase_config import supabase, USER_PROFILES_TABLE
+from sklearn.ensemble import IsolationForest, RandomForestRegressor
+from sklearn.metrics import accuracy_score
+from sklearn.model_selection import train_test_split
+from sklearn.neighbors import NearestNeighbors
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+
+warnings.filterwarnings("ignore")
+from supabase_config import load_user_profiles_dataframe
 
 
 def safe_num(x):
@@ -23,7 +25,7 @@ def safe_num(x):
         return float(x)
     if isinstance(x, np.ndarray):
         return x.tolist()
-    if hasattr(x, 'item'):  # NumPy scalar
+    if hasattr(x, "item"):  # NumPy scalar
         return x.item()
     return x
 
@@ -43,68 +45,126 @@ class AdvancedMLModels:
     # Data Loading & Features
     # ----------------------
     def load_data(self):
-        response = supabase.table(USER_PROFILES_TABLE).select("*").execute()
-        if not response.data:
-            raise ValueError("No data found in Supabase database")
+        df, source = load_user_profiles_dataframe()
+        if df.empty:
+            raise ValueError("No data found in Supabase or local CSV dataset")
 
-        self.df = pd.DataFrame(response.data)
-        print(f"Advanced ML data loaded: {len(self.df)} users, {len(self.df.columns)} features")
+        self.df = df.copy()
+        print(
+            f"Advanced ML data loaded from {source}: {len(self.df)} users, {len(self.df.columns)} features"
+        )
 
         # Fill defaults
-        self.df = self.df.fillna({
-            'Risk_Tolerance': 'Medium', 'Investment_Type': 'ETF', 'Fund_Name': 'Default Fund',
-            'Marital_Status': 'Single', 'Education_Level': "Bachelor's", 'Health_Status': 'Average',
-            'Annual_Income': 0, 'Current_Savings': 0, 'Contribution_Amount': 0, 'Years_Contributed': 0,
-            'Age': 30, 'Portfolio_Diversity_Score': 0.5, 'Savings_Rate': 0.1, 'Annual_Return_Rate': 5.0,
-            'Volatility': 2.0, 'Fees_Percentage': 1.0, 'Projected_Pension_Amount': 0,
-            'Debt_Level': 'Low', 'Employment_Status': 'Full-time', 'Investment_Experience_Level': 'Beginner',
-            'Contribution_Frequency': 'Monthly', 'Transaction_Amount': 0, 'Transaction_Pattern_Score': 0.5,
-            'Anomaly_Score': 0.1, 'Suspicious_Flag': 'No'
-        })
+        self.df = self.df.fillna(
+            {
+                "Risk_Tolerance": "Medium",
+                "Investment_Type": "ETF",
+                "Fund_Name": "Default Fund",
+                "Marital_Status": "Single",
+                "Education_Level": "Bachelor's",
+                "Health_Status": "Average",
+                "Annual_Income": 0,
+                "Current_Savings": 0,
+                "Contribution_Amount": 0,
+                "Years_Contributed": 0,
+                "Age": 30,
+                "Portfolio_Diversity_Score": 0.5,
+                "Savings_Rate": 0.1,
+                "Annual_Return_Rate": 5.0,
+                "Volatility": 2.0,
+                "Fees_Percentage": 1.0,
+                "Projected_Pension_Amount": 0,
+                "Debt_Level": "Low",
+                "Employment_Status": "Full-time",
+                "Investment_Experience_Level": "Beginner",
+                "Contribution_Frequency": "Monthly",
+                "Transaction_Amount": 0,
+                "Transaction_Pattern_Score": 0.5,
+                "Anomaly_Score": 0.1,
+                "Suspicious_Flag": "No",
+            }
+        )
 
         # Convert numeric columns
         numeric_columns = [
-            'Age', 'Annual_Income', 'Current_Savings', 'Contribution_Amount', 'Years_Contributed',
-            'Portfolio_Diversity_Score', 'Savings_Rate', 'Annual_Return_Rate', 'Volatility', 'Fees_Percentage',
-            'Projected_Pension_Amount', 'Transaction_Amount', 'Transaction_Pattern_Score', 'Anomaly_Score'
+            "Age",
+            "Annual_Income",
+            "Current_Savings",
+            "Contribution_Amount",
+            "Years_Contributed",
+            "Portfolio_Diversity_Score",
+            "Savings_Rate",
+            "Annual_Return_Rate",
+            "Volatility",
+            "Fees_Percentage",
+            "Projected_Pension_Amount",
+            "Transaction_Amount",
+            "Transaction_Pattern_Score",
+            "Anomaly_Score",
         ]
         for col in numeric_columns:
             if col in self.df.columns:
-                self.df[col] = pd.to_numeric(self.df[col], errors='coerce')
+                self.df[col] = pd.to_numeric(self.df[col], errors="coerce")
 
         # Encode categoricals
         categorical_columns = [
-            'Gender', 'Country', 'Employment_Status', 'Risk_Tolerance', 'Investment_Type', 'Fund_Name',
-            'Marital_Status', 'Education_Level', 'Health_Status', 'Home_Ownership_Status',
-            'Investment_Experience_Level', 'Financial_Goals', 'Insurance_Coverage', 'Pension_Type',
-            'Withdrawal_Strategy', 'Debt_Level', 'Contribution_Frequency', 'Suspicious_Flag'
+            "Gender",
+            "Country",
+            "Employment_Status",
+            "Risk_Tolerance",
+            "Investment_Type",
+            "Fund_Name",
+            "Marital_Status",
+            "Education_Level",
+            "Health_Status",
+            "Home_Ownership_Status",
+            "Investment_Experience_Level",
+            "Financial_Goals",
+            "Insurance_Coverage",
+            "Pension_Type",
+            "Withdrawal_Strategy",
+            "Debt_Level",
+            "Contribution_Frequency",
+            "Suspicious_Flag",
         ]
         for col in categorical_columns:
             if col in self.df.columns:
-                self.df[col] = self.df[col].fillna('Unknown')
+                self.df[col] = self.df[col].fillna("Unknown")
                 le = LabelEncoder()
-                self.df[f'{col}_encoded'] = le.fit_transform(self.df[col].astype(str))
+                self.df[f"{col}_encoded"] = le.fit_transform(self.df[col].astype(str))
                 self.label_encoders[col] = le
 
         self.create_derived_features()
 
     def create_derived_features(self):
-        self.df['DTI_Ratio'] = np.where(
-            self.df['Annual_Income'] > 0,
-            self.df['Debt_Level'].map({'Low': 0.1, 'Medium': 0.3, 'High': 0.5, 'Unknown': 0.2}) * self.df['Annual_Income'] / self.df['Annual_Income'],
-            np.nan
+        debt_numeric = pd.to_numeric(self.df["Debt_Level"], errors="coerce")
+        debt_factor = self.df["Debt_Level"].map(
+            {"Low": 0.1, "Medium": 0.3, "High": 0.5, "Unknown": 0.2}
         )
-        self.df['Savings_to_Income_Ratio'] = np.where(
-            self.df['Annual_Income'] > 0,
-            self.df['Current_Savings'] / self.df['Annual_Income'], 0
+
+        self.df["DTI_Ratio"] = np.where(
+            self.df["Annual_Income"] > 0,
+            np.where(
+                debt_numeric.notna(),
+                debt_numeric / self.df["Annual_Income"],
+                debt_factor.fillna(0.2),
+            ),
+            np.nan,
         )
-        self.df['Contribution_Percent_of_Income'] = np.where(
-            self.df['Annual_Income'] > 0,
-            (self.df['Contribution_Amount'] * 12) / self.df['Annual_Income'], 0
+        self.df["Savings_to_Income_Ratio"] = np.where(
+            self.df["Annual_Income"] > 0,
+            self.df["Current_Savings"] / self.df["Annual_Income"],
+            0,
         )
-        self.df['Risk_Adjusted_Return'] = np.where(
-            self.df['Volatility'] > 0,
-            self.df['Annual_Return_Rate'] / self.df['Volatility'], 0
+        self.df["Contribution_Percent_of_Income"] = np.where(
+            self.df["Annual_Income"] > 0,
+            (self.df["Contribution_Amount"] * 12) / self.df["Annual_Income"],
+            0,
+        )
+        self.df["Risk_Adjusted_Return"] = np.where(
+            self.df["Volatility"] > 0,
+            self.df["Annual_Return_Rate"] / self.df["Volatility"],
+            0,
         )
         print("Derived features created successfully")
 
@@ -113,35 +173,65 @@ class AdvancedMLModels:
     # ----------------------
     def get_health_recommendations(self, score: float) -> list:
         if score >= 80:
-            return ["Maintain current savings habits", "Consider diversifying investments further"]
+            return [
+                "Maintain current savings habits",
+                "Consider diversifying investments further",
+            ]
         elif score >= 60:
-            return ["Increase savings rate", "Review debt levels and reduce high-interest debt"]
+            return [
+                "Increase savings rate",
+                "Review debt levels and reduce high-interest debt",
+            ]
         elif score >= 40:
-            return ["Set a monthly budget", "Start an emergency fund", "Increase retirement contributions"]
+            return [
+                "Set a monthly budget",
+                "Start an emergency fund",
+                "Increase retirement contributions",
+            ]
         else:
-            return ["Seek financial advice", "Focus on paying off debt", "Automate savings to build discipline"]
+            return [
+                "Seek financial advice",
+                "Focus on paying off debt",
+                "Automate savings to build discipline",
+            ]
 
     def get_churn_recommendations(self, probability: float) -> list:
         if probability > 0.5:
-            return ["Reach out with personalized offers", "Provide financial planning assistance"]
+            return [
+                "Reach out with personalized offers",
+                "Provide financial planning assistance",
+            ]
         elif probability > 0.3:
-            return ["Send reminders about contributions", "Offer small incentives to stay engaged"]
+            return [
+                "Send reminders about contributions",
+                "Offer small incentives to stay engaged",
+            ]
         else:
             return ["Keep engagement high with educational content"]
 
     def get_anomaly_recommendations(self, is_anomaly: bool) -> list:
         if is_anomaly:
-            return ["Investigate unusual account activity", "Verify recent transactions", "Alert compliance team if needed"]
+            return [
+                "Investigate unusual account activity",
+                "Verify recent transactions",
+                "Alert compliance team if needed",
+            ]
         else:
             return ["No unusual activity detected", "Continue regular monitoring"]
 
-    def get_portfolio_recommendations(self, allocation: list, current_fund: str) -> list:
+    def get_portfolio_recommendations(
+        self, allocation: list, current_fund: str
+    ) -> list:
         recs = []
         for fund in allocation:
             if fund["allocation_percent"] > 30:
-                recs.append(f"Consider balancing {fund['fund_name']} as it exceeds 30% allocation")
+                recs.append(
+                    f"Consider balancing {fund['fund_name']} as it exceeds 30% allocation"
+                )
         if current_fund not in [f["fund_name"] for f in allocation]:
-            recs.append(f"Your current fund {current_fund} is not in the optimized portfolio — consider switching")
+            recs.append(
+                f"Your current fund {current_fund} is not in the optimized portfolio — consider switching"
+            )
         return recs or ["Your portfolio looks balanced"]
 
     # ----------------------
@@ -150,146 +240,282 @@ class AdvancedMLModels:
     def train_financial_health_model(self):
         print("Training Financial Health Score model...")
         health_features = [
-            'Annual_Income','Current_Savings','Savings_Rate','Debt_Level_encoded','Portfolio_Diversity_Score',
-            'Contribution_Amount','Contribution_Frequency_encoded','Years_Contributed','DTI_Ratio',
-            'Savings_to_Income_Ratio','Contribution_Percent_of_Income','Risk_Adjusted_Return','Age','Investment_Experience_Level_encoded']
+            "Annual_Income",
+            "Current_Savings",
+            "Savings_Rate",
+            "Debt_Level_encoded",
+            "Portfolio_Diversity_Score",
+            "Contribution_Amount",
+            "Contribution_Frequency_encoded",
+            "Years_Contributed",
+            "DTI_Ratio",
+            "Savings_to_Income_Ratio",
+            "Contribution_Percent_of_Income",
+            "Risk_Adjusted_Return",
+            "Age",
+            "Investment_Experience_Level_encoded",
+        ]
 
         def calculate_health_score(row):
             score = 0
-            if row['Annual_Income'] > 100000: score += 20
-            elif row['Annual_Income'] > 75000: score += 15
-            elif row['Annual_Income'] > 50000: score += 10
-            else: score += 5
-            savings_ratio = row['Savings_to_Income_Ratio']
-            if savings_ratio > 2.0: score += 25
-            elif savings_ratio > 1.0: score += 20
-            elif savings_ratio > 0.5: score += 15
-            elif savings_ratio > 0.2: score += 10
-            else: score += 5
-            contrib_ratio = row['Contribution_Percent_of_Income']
-            if contrib_ratio > 0.15: score += 20
-            elif contrib_ratio > 0.10: score += 15
-            elif contrib_ratio > 0.05: score += 10
-            else: score += 5
-            dti = row['DTI_Ratio']
-            if dti < 0.2: score += 15
-            elif dti < 0.3: score += 12
-            elif dti < 0.4: score += 8
-            else: score += 3
-            diversity = row['Portfolio_Diversity_Score']
-            if diversity > 0.8: score += 10
-            elif diversity > 0.6: score += 8
-            elif diversity > 0.4: score += 5
-            else: score += 2
-            experience = row['Investment_Experience_Level_encoded']
-            if experience >= 2: score += 10
-            elif experience >= 1: score += 7
-            else: score += 4
+            if row["Annual_Income"] > 100000:
+                score += 20
+            elif row["Annual_Income"] > 75000:
+                score += 15
+            elif row["Annual_Income"] > 50000:
+                score += 10
+            else:
+                score += 5
+            savings_ratio = row["Savings_to_Income_Ratio"]
+            if savings_ratio > 2.0:
+                score += 25
+            elif savings_ratio > 1.0:
+                score += 20
+            elif savings_ratio > 0.5:
+                score += 15
+            elif savings_ratio > 0.2:
+                score += 10
+            else:
+                score += 5
+            contrib_ratio = row["Contribution_Percent_of_Income"]
+            if contrib_ratio > 0.15:
+                score += 20
+            elif contrib_ratio > 0.10:
+                score += 15
+            elif contrib_ratio > 0.05:
+                score += 10
+            else:
+                score += 5
+            dti = row["DTI_Ratio"]
+            if dti < 0.2:
+                score += 15
+            elif dti < 0.3:
+                score += 12
+            elif dti < 0.4:
+                score += 8
+            else:
+                score += 3
+            diversity = row["Portfolio_Diversity_Score"]
+            if diversity > 0.8:
+                score += 10
+            elif diversity > 0.6:
+                score += 8
+            elif diversity > 0.4:
+                score += 5
+            else:
+                score += 2
+            experience = row["Investment_Experience_Level_encoded"]
+            if experience >= 2:
+                score += 10
+            elif experience >= 1:
+                score += 7
+            else:
+                score += 4
             return min(100, max(0, score))
 
-        self.df['Financial_Health_Score'] = self.df.apply(calculate_health_score, axis=1)
-        health_data = self.df[health_features + ['Financial_Health_Score']].dropna()
+        self.df["Financial_Health_Score"] = self.df.apply(
+            calculate_health_score, axis=1
+        )
+        health_data = self.df[health_features + ["Financial_Health_Score"]].dropna()
         X = health_data[health_features]
-        y = health_data['Financial_Health_Score']
+        y = health_data["Financial_Health_Score"]
         rf_model = RandomForestRegressor(n_estimators=100, random_state=42)
         rf_model.fit(X, y)
-        self.models['financial_health'] = rf_model
-        joblib.dump(rf_model, f'{self.models_dir}/financial_health_model.pkl')
+        self.models["financial_health"] = rf_model
+        joblib.dump(rf_model, f"{self.models_dir}/financial_health_model.pkl")
         print(f"Financial Health model trained on {len(health_data)} samples")
         return rf_model
 
     def train_churn_risk_model(self):
         print("Training Churn Risk model...")
         churn_features = [
-            'Age','Annual_Income','Employment_Status_encoded','Debt_Level_encoded','Contribution_Frequency_encoded',
-            'Years_Contributed','Savings_Rate','Portfolio_Diversity_Score','Investment_Experience_Level_encoded',
-            'Contribution_Percent_of_Income','DTI_Ratio']
+            "Age",
+            "Annual_Income",
+            "Employment_Status_encoded",
+            "Debt_Level_encoded",
+            "Contribution_Frequency_encoded",
+            "Years_Contributed",
+            "Savings_Rate",
+            "Portfolio_Diversity_Score",
+            "Investment_Experience_Level_encoded",
+            "Contribution_Percent_of_Income",
+            "DTI_Ratio",
+        ]
 
         def create_churn_label(row):
             churn_score = 0
-            if row['Contribution_Frequency_encoded'] == 0: churn_score += 1
-            if row.get('Suspicious_Flag', 'No') == 'Yes': churn_score += 1
-            if row['Contribution_Percent_of_Income'] < 0.02: churn_score += 1
-            if row['DTI_Ratio'] > 0.4: churn_score += 1
-            if row['Employment_Status_encoded'] == 0: churn_score += 1
-            if row['Savings_Rate'] < 0.05: churn_score += 1
-            if row['Age'] < 30 and row['Contribution_Amount'] < 500: churn_score += 1
+            if row["Contribution_Frequency_encoded"] == 0:
+                churn_score += 1
+            if row.get("Suspicious_Flag", "No") == "Yes":
+                churn_score += 1
+            if row["Contribution_Percent_of_Income"] < 0.02:
+                churn_score += 1
+            if row["DTI_Ratio"] > 0.4:
+                churn_score += 1
+            if row["Employment_Status_encoded"] == 0:
+                churn_score += 1
+            if row["Savings_Rate"] < 0.05:
+                churn_score += 1
+            if row["Age"] < 30 and row["Contribution_Amount"] < 500:
+                churn_score += 1
             return 1 if churn_score >= 2 else 0
 
-        self.df['Churn_Risk'] = self.df.apply(create_churn_label, axis=1)
-        churn_data = self.df[churn_features + ['Churn_Risk']].dropna()
+        self.df["Churn_Risk"] = self.df.apply(create_churn_label, axis=1)
+        churn_data = self.df[churn_features + ["Churn_Risk"]].dropna()
         X = churn_data[churn_features]
-        y = churn_data['Churn_Risk']
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+        y = churn_data["Churn_Risk"]
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.2, random_state=42
+        )
         xgb_model = xgb.XGBClassifier(n_estimators=100, random_state=42)
         xgb_model.fit(X_train, y_train)
         y_pred = xgb_model.predict(X_test)
         accuracy = accuracy_score(y_test, y_pred)
         print(f"Churn Risk model accuracy: {accuracy:.3f}")
-        self.models['churn_risk'] = xgb_model
-        joblib.dump(xgb_model, f'{self.models_dir}/churn_risk_model.pkl')
+        self.models["churn_risk"] = xgb_model
+        joblib.dump(xgb_model, f"{self.models_dir}/churn_risk_model.pkl")
         return xgb_model
 
     def train_anomaly_detection_model(self):
         print("Training Anomaly Detection model...")
-        anomaly_features = ['Transaction_Amount','Transaction_Pattern_Score','Anomaly_Score','Annual_Income','Contribution_Amount','Current_Savings','Portfolio_Diversity_Score','Savings_Rate']
+        anomaly_features = [
+            "Transaction_Amount",
+            "Transaction_Pattern_Score",
+            "Anomaly_Score",
+            "Annual_Income",
+            "Contribution_Amount",
+            "Current_Savings",
+            "Portfolio_Diversity_Score",
+            "Savings_Rate",
+        ]
         anomaly_data = self.df[anomaly_features].dropna()
         iso_forest = IsolationForest(contamination=0.1, random_state=42)
         iso_forest.fit(anomaly_data)
-        self.models['anomaly_detection'] = iso_forest
-        joblib.dump(iso_forest, f'{self.models_dir}/anomaly_detection_model.pkl')
+        self.models["anomaly_detection"] = iso_forest
+        joblib.dump(iso_forest, f"{self.models_dir}/anomaly_detection_model.pkl")
         print(f"Anomaly Detection model trained on {len(anomaly_data)} samples")
         return iso_forest
 
     def train_fund_recommendation_model(self):
         print("Training Fund Recommendation model...")
-        fund_data = self.df[['User_ID','Fund_Name','Investment_Type','Risk_Tolerance_encoded','Annual_Return_Rate','Volatility','Fees_Percentage']].dropna()
-        fund_features = ['Annual_Return_Rate','Volatility','Fees_Percentage']
-        fund_embeddings = fund_data.groupby('Fund_Name')[fund_features].mean()
-        user_features = ['Age','Annual_Income','Risk_Tolerance_encoded','Investment_Experience_Level_encoded']
-        user_embeddings = self.df.groupby('User_ID')[user_features].mean()
-        user_fund_matrix = fund_data.pivot_table(index='User_ID', columns='Fund_Name', values='Annual_Return_Rate', fill_value=0)
-        knn_model = NearestNeighbors(n_neighbors=5, metric='cosine')
+        fund_data = self.df[
+            [
+                "User_ID",
+                "Fund_Name",
+                "Investment_Type",
+                "Risk_Tolerance_encoded",
+                "Annual_Return_Rate",
+                "Volatility",
+                "Fees_Percentage",
+            ]
+        ].dropna()
+        fund_features = ["Annual_Return_Rate", "Volatility", "Fees_Percentage"]
+        fund_embeddings = fund_data.groupby("Fund_Name")[fund_features].mean()
+        user_features = [
+            "Age",
+            "Annual_Income",
+            "Risk_Tolerance_encoded",
+            "Investment_Experience_Level_encoded",
+        ]
+        user_embeddings = self.df.groupby("User_ID")[user_features].mean()
+        user_fund_matrix = fund_data.pivot_table(
+            index="User_ID",
+            columns="Fund_Name",
+            values="Annual_Return_Rate",
+            fill_value=0,
+        )
+        knn_model = NearestNeighbors(n_neighbors=5, metric="cosine")
         knn_model.fit(user_fund_matrix.fillna(0))
-        self.models['fund_recommendation'] = {'knn_model': knn_model,'user_fund_matrix': user_fund_matrix,'fund_embeddings': fund_embeddings,'user_embeddings': user_embeddings}
-        joblib.dump(self.models['fund_recommendation'], f'{self.models_dir}/fund_recommendation_model.pkl')
+        self.models["fund_recommendation"] = {
+            "knn_model": knn_model,
+            "user_fund_matrix": user_fund_matrix,
+            "fund_embeddings": fund_embeddings,
+            "user_embeddings": user_embeddings,
+        }
+        joblib.dump(
+            self.models["fund_recommendation"],
+            f"{self.models_dir}/fund_recommendation_model.pkl",
+        )
         print(f"Fund Recommendation model trained on {len(fund_data)} interactions")
-        return self.models['fund_recommendation']
+        return self.models["fund_recommendation"]
 
     def train_monte_carlo_model(self):
         print("Training Monte Carlo model...")
-        monte_carlo_config = {'n_simulations': 10000,'default_return': 7.0,'default_volatility': 15.0,'inflation_rate': 3.0,'fees_rate': 1.0}
-        self.models['monte_carlo'] = monte_carlo_config
-        joblib.dump(monte_carlo_config, f'{self.models_dir}/monte_carlo_config.pkl')
+        monte_carlo_config = {
+            "n_simulations": 10000,
+            "default_return": 7.0,
+            "default_volatility": 15.0,
+            "inflation_rate": 3.0,
+            "fees_rate": 1.0,
+        }
+        self.models["monte_carlo"] = monte_carlo_config
+        joblib.dump(monte_carlo_config, f"{self.models_dir}/monte_carlo_config.pkl")
         print("Monte Carlo configuration saved")
         return monte_carlo_config
 
     def train_peer_matching_model(self):
         print("Training Peer Matching model...")
-        peer_features = ['Age','Annual_Income','Current_Savings','Contribution_Amount','Risk_Tolerance_encoded','Investment_Experience_Level_encoded','Portfolio_Diversity_Score','Savings_Rate','Years_Contributed']
-        peer_data = self.df[peer_features + ['User_ID']].dropna()
+        peer_features = [
+            "Age",
+            "Annual_Income",
+            "Current_Savings",
+            "Contribution_Amount",
+            "Risk_Tolerance_encoded",
+            "Investment_Experience_Level_encoded",
+            "Portfolio_Diversity_Score",
+            "Savings_Rate",
+            "Years_Contributed",
+        ]
+        peer_data = self.df[peer_features + ["User_ID"]].dropna()
         X = peer_data[peer_features]
         scaler = StandardScaler()
         X_scaled = scaler.fit_transform(X)
-        knn_model = NearestNeighbors(n_neighbors=10, metric='euclidean')
+        knn_model = NearestNeighbors(n_neighbors=10, metric="euclidean")
         knn_model.fit(X_scaled)
-        self.models['peer_matching'] = {'knn_model': knn_model,'scaler': scaler,'user_ids': peer_data['User_ID'].values,'features': peer_features}
-        joblib.dump(self.models['peer_matching'], f'{self.models_dir}/peer_matching_model.pkl')
+        self.models["peer_matching"] = {
+            "knn_model": knn_model,
+            "scaler": scaler,
+            "user_ids": peer_data["User_ID"].values,
+            "features": peer_features,
+        }
+        joblib.dump(
+            self.models["peer_matching"], f"{self.models_dir}/peer_matching_model.pkl"
+        )
         print(f"Peer Matching model trained on {len(peer_data)} users")
-        return self.models['peer_matching']
+        return self.models["peer_matching"]
 
     def train_portfolio_optimization_model(self):
         print("Training Portfolio Optimization model...")
-        fund_data = self.df[['Fund_Name','Annual_Return_Rate','Volatility','Fees_Percentage']].dropna()
-        fund_stats = fund_data.groupby('Fund_Name').agg({'Annual_Return_Rate':'mean','Volatility':'mean','Fees_Percentage':'mean'}).reset_index()
+        fund_data = self.df[
+            ["Fund_Name", "Annual_Return_Rate", "Volatility", "Fees_Percentage"]
+        ].dropna()
+        fund_stats = (
+            fund_data.groupby("Fund_Name")
+            .agg(
+                {
+                    "Annual_Return_Rate": "mean",
+                    "Volatility": "mean",
+                    "Fees_Percentage": "mean",
+                }
+            )
+            .reset_index()
+        )
         n_funds = len(fund_stats)
-        returns = fund_stats['Annual_Return_Rate'].values
-        volatilities = fund_stats['Volatility'].values
+        returns = fund_stats["Annual_Return_Rate"].values
+        volatilities = fund_stats["Volatility"].values
         cov_matrix = np.outer(volatilities, volatilities) * 0.3
-        np.fill_diagonal(cov_matrix, volatilities ** 2)
-        portfolio_config = {'fund_names': fund_stats['Fund_Name'].tolist(),'expected_returns': returns,'covariance_matrix': cov_matrix,'fees': fund_stats['Fees_Percentage'].values,'risk_free_rate': 2.0}
-        self.models['portfolio_optimization'] = portfolio_config
-        joblib.dump(portfolio_config, f'{self.models_dir}/portfolio_optimization_model.pkl')
+        np.fill_diagonal(cov_matrix, volatilities**2)
+        portfolio_config = {
+            "fund_names": fund_stats["Fund_Name"].tolist(),
+            "expected_returns": returns,
+            "covariance_matrix": cov_matrix,
+            "fees": fund_stats["Fees_Percentage"].values,
+            "risk_free_rate": 2.0,
+        }
+        self.models["portfolio_optimization"] = portfolio_config
+        joblib.dump(
+            portfolio_config, f"{self.models_dir}/portfolio_optimization_model.pkl"
+        )
         print(f"Portfolio Optimization model trained on {n_funds} funds")
         return portfolio_config
 
@@ -309,254 +535,329 @@ class AdvancedMLModels:
     def predict_financial_health(self, user_id: str) -> Dict[str, Any]:
         """Predict financial health score for a user"""
         try:
-            user_data = self.df[self.df['User_ID'] == user_id]
+            user_data = self.df[self.df["User_ID"] == user_id]
             if user_data.empty:
-                return {'error': 'User not found'}
-            
+                return {"error": "User not found"}
+
             user = user_data.iloc[0]
-            
+
             # Use the same features as training
             health_features = [
-                'Annual_Income','Current_Savings','Savings_Rate','Debt_Level_encoded','Portfolio_Diversity_Score',
-                'Contribution_Amount','Contribution_Frequency_encoded','Years_Contributed','DTI_Ratio',
-                'Savings_to_Income_Ratio','Contribution_Percent_of_Income','Risk_Adjusted_Return','Age','Investment_Experience_Level_encoded'
+                "Annual_Income",
+                "Current_Savings",
+                "Savings_Rate",
+                "Debt_Level_encoded",
+                "Portfolio_Diversity_Score",
+                "Contribution_Amount",
+                "Contribution_Frequency_encoded",
+                "Years_Contributed",
+                "DTI_Ratio",
+                "Savings_to_Income_Ratio",
+                "Contribution_Percent_of_Income",
+                "Risk_Adjusted_Return",
+                "Age",
+                "Investment_Experience_Level_encoded",
             ]
-            
+
             # Prepare features for prediction
             X = user[health_features].values.reshape(1, -1)
-            
+
             # Predict using trained model
-            if 'financial_health' in self.models:
-                score = self.models['financial_health'].predict(X)[0]
+            if "financial_health" in self.models:
+                score = self.models["financial_health"].predict(X)[0]
             else:
                 # Fallback calculation
                 score = self.calculate_financial_health_score(user)
-            
+
             recommendations = self.get_health_recommendations(score)
-            
+
             return {
-                'financial_health_score': safe_num(score),
-                'recommendations': recommendations,
-                'status': 'Excellent' if score >= 80 else 'Good' if score >= 60 else 'Fair' if score >= 40 else 'Poor'
+                "financial_health_score": safe_num(score),
+                "recommendations": recommendations,
+                "status": "Excellent"
+                if score >= 80
+                else "Good"
+                if score >= 60
+                else "Fair"
+                if score >= 40
+                else "Poor",
             }
         except Exception as e:
-            return {'error': str(e)}
-    
+            return {"error": str(e)}
+
     def calculate_financial_health_score(self, user: pd.Series) -> float:
         """Calculate financial health score using the same logic as training"""
         score = 0
-        
+
         # Income component (20 points)
-        income = user['Annual_Income'] or 0
-        if income > 100000: score += 20
-        elif income > 75000: score += 15
-        elif income > 50000: score += 10
-        else: score += 5
-        
+        income = user["Annual_Income"] or 0
+        if income > 100000:
+            score += 20
+        elif income > 75000:
+            score += 15
+        elif income > 50000:
+            score += 10
+        else:
+            score += 5
+
         # Savings component (25 points)
-        savings_ratio = user['Savings_to_Income_Ratio'] or 0
-        if savings_ratio > 2.0: score += 25
-        elif savings_ratio > 1.0: score += 20
-        elif savings_ratio > 0.5: score += 15
-        elif savings_ratio > 0.2: score += 10
-        else: score += 5
-        
+        savings_ratio = user["Savings_to_Income_Ratio"] or 0
+        if savings_ratio > 2.0:
+            score += 25
+        elif savings_ratio > 1.0:
+            score += 20
+        elif savings_ratio > 0.5:
+            score += 15
+        elif savings_ratio > 0.2:
+            score += 10
+        else:
+            score += 5
+
         # Contribution component (20 points)
-        contrib_ratio = user['Contribution_Percent_of_Income'] or 0
-        if contrib_ratio > 0.15: score += 20
-        elif contrib_ratio > 0.10: score += 15
-        elif contrib_ratio > 0.05: score += 10
-        else: score += 5
-        
+        contrib_ratio = user["Contribution_Percent_of_Income"] or 0
+        if contrib_ratio > 0.15:
+            score += 20
+        elif contrib_ratio > 0.10:
+            score += 15
+        elif contrib_ratio > 0.05:
+            score += 10
+        else:
+            score += 5
+
         # Debt component (15 points)
-        dti = user['DTI_Ratio'] or 0
-        if dti < 0.2: score += 15
-        elif dti < 0.3: score += 12
-        elif dti < 0.4: score += 8
-        else: score += 3
-        
+        dti = user["DTI_Ratio"] or 0
+        if dti < 0.2:
+            score += 15
+        elif dti < 0.3:
+            score += 12
+        elif dti < 0.4:
+            score += 8
+        else:
+            score += 3
+
         # Diversity component (10 points)
-        diversity = user['Portfolio_Diversity_Score'] or 0
-        if diversity > 0.8: score += 10
-        elif diversity > 0.6: score += 8
-        elif diversity > 0.4: score += 5
-        else: score += 2
-        
+        diversity = user["Portfolio_Diversity_Score"] or 0
+        if diversity > 0.8:
+            score += 10
+        elif diversity > 0.6:
+            score += 8
+        elif diversity > 0.4:
+            score += 5
+        else:
+            score += 2
+
         # Experience component (10 points)
-        experience = user['Investment_Experience_Level_encoded'] or 0
-        if experience >= 2: score += 10
-        elif experience >= 1: score += 7
-        else: score += 4
-        
+        experience = user["Investment_Experience_Level_encoded"] or 0
+        if experience >= 2:
+            score += 10
+        elif experience >= 1:
+            score += 7
+        else:
+            score += 4
+
         return min(100, max(0, score))
 
     def predict_churn_risk(self, user_id: str) -> Dict[str, Any]:
         """Predict churn risk for a user"""
         try:
-            user_data = self.df[self.df['User_ID'] == user_id]
+            user_data = self.df[self.df["User_ID"] == user_id]
             if user_data.empty:
-                return {'error': 'User not found'}
-            
+                return {"error": "User not found"}
+
             user = user_data.iloc[0]
-            
+
             # Use the same features as training
             churn_features = [
-                'Age','Annual_Income','Employment_Status_encoded','Debt_Level_encoded','Contribution_Frequency_encoded',
-                'Years_Contributed','Savings_Rate','Portfolio_Diversity_Score','Investment_Experience_Level_encoded',
-                'Contribution_Percent_of_Income','DTI_Ratio'
+                "Age",
+                "Annual_Income",
+                "Employment_Status_encoded",
+                "Debt_Level_encoded",
+                "Contribution_Frequency_encoded",
+                "Years_Contributed",
+                "Savings_Rate",
+                "Portfolio_Diversity_Score",
+                "Investment_Experience_Level_encoded",
+                "Contribution_Percent_of_Income",
+                "DTI_Ratio",
             ]
-            
+
             # Prepare features for prediction
             X = user[churn_features].values.reshape(1, -1)
-            
+
             # Predict using trained model
-            if 'churn_risk' in self.models:
-                probability = self.models['churn_risk'].predict_proba(X)[0][1]
+            if "churn_risk" in self.models:
+                probability = self.models["churn_risk"].predict_proba(X)[0][1]
             else:
                 # Fallback calculation
                 probability = self.calculate_churn_probability(user)
-            
+
             recommendations = self.get_churn_recommendations(probability)
-            
+
             return {
-                'churn_probability': safe_num(probability),
-                'risk_level': 'High' if probability > 0.5 else 'Medium' if probability > 0.3 else 'Low',
-                'recommendations': recommendations
+                "churn_probability": safe_num(probability),
+                "risk_level": "High"
+                if probability > 0.5
+                else "Medium"
+                if probability > 0.3
+                else "Low",
+                "recommendations": recommendations,
             }
         except Exception as e:
-            return {'error': str(e)}
-    
+            return {"error": str(e)}
+
     def calculate_churn_probability(self, user: pd.Series) -> float:
         """Calculate churn probability using the same logic as training"""
         churn_score = 0
-        
+
         # Contribution frequency
-        if user['Contribution_Frequency_encoded'] == 0: churn_score += 1
-        
+        if user["Contribution_Frequency_encoded"] == 0:
+            churn_score += 1
+
         # Suspicious flag
-        if user.get('Suspicious_Flag', 'No') == 'Yes': churn_score += 1
-        
+        if user.get("Suspicious_Flag", "No") == "Yes":
+            churn_score += 1
+
         # Contribution percentage
-        if user['Contribution_Percent_of_Income'] < 0.02: churn_score += 1
-        
+        if user["Contribution_Percent_of_Income"] < 0.02:
+            churn_score += 1
+
         # DTI ratio
-        if user['DTI_Ratio'] > 0.4: churn_score += 1
-        
+        if user["DTI_Ratio"] > 0.4:
+            churn_score += 1
+
         # Employment status
-        if user['Employment_Status_encoded'] == 0: churn_score += 1
-        
+        if user["Employment_Status_encoded"] == 0:
+            churn_score += 1
+
         # Savings rate
-        if user['Savings_Rate'] < 0.05: churn_score += 1
-        
+        if user["Savings_Rate"] < 0.05:
+            churn_score += 1
+
         # Age and contribution amount
-        if user['Age'] < 30 and user['Contribution_Amount'] < 500: churn_score += 1
-        
+        if user["Age"] < 30 and user["Contribution_Amount"] < 500:
+            churn_score += 1
+
         # Convert score to probability
         return min(1.0, churn_score / 7.0)
 
     def detect_anomalies(self, user_id: str) -> Dict[str, Any]:
         """Detect anomalies for a user"""
         try:
-            user_data = self.df[self.df['User_ID'] == user_id]
+            user_data = self.df[self.df["User_ID"] == user_id]
             if user_data.empty:
-                return {'error': 'User not found'}
-            
+                return {"error": "User not found"}
+
             user = user_data.iloc[0]
-            
+
             # Use the same features as training
-            anomaly_features = ['Transaction_Amount','Transaction_Pattern_Score','Anomaly_Score','Annual_Income','Contribution_Amount','Current_Savings','Portfolio_Diversity_Score','Savings_Rate']
-            
+            anomaly_features = [
+                "Transaction_Amount",
+                "Transaction_Pattern_Score",
+                "Anomaly_Score",
+                "Annual_Income",
+                "Contribution_Amount",
+                "Current_Savings",
+                "Portfolio_Diversity_Score",
+                "Savings_Rate",
+            ]
+
             # Prepare features for prediction
             X = user[anomaly_features].values.reshape(1, -1)
-            
+
             # Predict using trained model
-            if 'anomaly_detection' in self.models:
-                anomaly_score = self.models['anomaly_detection'].decision_function(X)[0]
-                is_anomaly = self.models['anomaly_detection'].predict(X)[0] == -1
+            if "anomaly_detection" in self.models:
+                anomaly_score = self.models["anomaly_detection"].decision_function(X)[0]
+                is_anomaly = self.models["anomaly_detection"].predict(X)[0] == -1
             else:
                 # Fallback calculation
-                anomaly_score = user.get('Anomaly_Score', 0.1)
+                anomaly_score = user.get("Anomaly_Score", 0.1)
                 is_anomaly = anomaly_score > 0.5
-            
+
             recommendations = self.get_anomaly_recommendations(is_anomaly)
-            
+
             return {
-                'anomaly_score': safe_num(anomaly_score),
-                'is_anomaly': bool(is_anomaly),
-                'anomaly_percentage': safe_num(abs(anomaly_score) * 100),
-                'recommendations': recommendations
+                "anomaly_score": safe_num(anomaly_score),
+                "is_anomaly": bool(is_anomaly),
+                "anomaly_percentage": safe_num(abs(anomaly_score) * 100),
+                "recommendations": recommendations,
             }
         except Exception as e:
-            return {'error': str(e)}
+            return {"error": str(e)}
 
     def recommend_funds(self, user_id: str) -> Dict[str, Any]:
         """Recommend funds for a user"""
         try:
-            user_data = self.df[self.df['User_ID'] == user_id]
+            user_data = self.df[self.df["User_ID"] == user_id]
             if user_data.empty:
-                return {'error': 'User not found'}
-            
+                return {"error": "User not found"}
+
             user = user_data.iloc[0]
-            
-            if 'fund_recommendation' not in self.models:
-                return {'error': 'Fund recommendation model not trained'}
-            
-            model_data = self.models['fund_recommendation']
-            user_fund_matrix = model_data['user_fund_matrix']
-            
+
+            if "fund_recommendation" not in self.models:
+                return {"error": "Fund recommendation model not trained"}
+
+            model_data = self.models["fund_recommendation"]
+            user_fund_matrix = model_data["user_fund_matrix"]
+
             if user_id not in user_fund_matrix.index:
                 # Return default recommendations
                 return {
-                    'recommendations': ['Default Fund', 'Conservative Fund', 'Growth Fund'],
-                    'reasoning': 'No historical data available, using default recommendations'
+                    "recommendations": [
+                        "Default Fund",
+                        "Conservative Fund",
+                        "Growth Fund",
+                    ],
+                    "reasoning": "No historical data available, using default recommendations",
                 }
-            
+
             # Find similar users
             user_vector = user_fund_matrix.loc[user_id].values.reshape(1, -1)
-            distances, indices = model_data['knn_model'].kneighbors(user_vector)
-            
+            distances, indices = model_data["knn_model"].kneighbors(user_vector)
+
             # Get fund recommendations from similar users
             similar_users = user_fund_matrix.index[indices[0]]
             recommendations = []
-            
+
             for similar_user in similar_users:
                 user_funds = user_fund_matrix.loc[similar_user]
                 top_funds = user_funds.nlargest(3)
                 recommendations.extend(top_funds.index.tolist())
-            
+
             # Remove duplicates and limit to 5
             unique_recommendations = list(dict.fromkeys(recommendations))[:5]
-            
+
             return {
-                'recommendations': unique_recommendations,
-                'reasoning': f'Based on {len(similar_users)} similar users',
-                'similar_users_count': len(similar_users)
+                "recommendations": unique_recommendations,
+                "reasoning": f"Based on {len(similar_users)} similar users",
+                "similar_users_count": len(similar_users),
             }
         except Exception as e:
-            return {'error': str(e)}
+            return {"error": str(e)}
 
     def run_monte_carlo_simulation(self, user_id: str) -> Dict[str, Any]:
         """Run Monte Carlo simulation for a user"""
         try:
-            user_data = self.df[self.df['User_ID'] == user_id]
+            user_data = self.df[self.df["User_ID"] == user_id]
             if user_data.empty:
-                return {'error': 'User not found'}
-            
+                return {"error": "User not found"}
+
             user = user_data.iloc[0]
-            
-            if 'monte_carlo' not in self.models:
-                return {'error': 'Monte Carlo model not configured'}
-            
-            config = self.models['monte_carlo']
-            n_simulations = config['n_simulations']
-            annual_return = config['default_return']
-            volatility = config['default_volatility']
-            
+
+            if "monte_carlo" not in self.models:
+                return {"error": "Monte Carlo model not configured"}
+
+            config = self.models["monte_carlo"]
+            n_simulations = config["n_simulations"]
+            annual_return = config["default_return"]
+            volatility = config["default_volatility"]
+
             # User-specific parameters
-            current_savings = user['Current_Savings'] or 0
-            annual_contribution = (user['Contribution_Amount'] or 0) * 12
-            years_to_retirement = (user['Retirement_Age_Goal'] or 65) - (user['Age'] or 30)
-            
+            current_savings = user["Current_Savings"] or 0
+            annual_contribution = (user["Contribution_Amount"] or 0) * 12
+            years_to_retirement = (user["Retirement_Age_Goal"] or 65) - (
+                user["Age"] or 30
+            )
+
             # Run simulation
             results = []
             for _ in range(n_simulations):
@@ -566,124 +867,136 @@ class AdvancedMLModels:
                     balance += annual_contribution
                     # Apply return with volatility
                     return_rate = np.random.normal(annual_return, volatility) / 100
-                    balance *= (1 + return_rate)
+                    balance *= 1 + return_rate
                 results.append(balance)
-            
+
             results = np.array(results)
-            
+
             # Calculate statistics
             mean_result = np.mean(results)
             median_result = np.median(results)
             percentile_10 = np.percentile(results, 10)
             percentile_90 = np.percentile(results, 90)
-            
+
             # Probability of meeting target
-            target = user.get('Projected_Pension_Amount', mean_result)
+            target = user.get("Projected_Pension_Amount", mean_result)
             probability_above_target = np.mean(results >= target)
-            
+
             return {
-                'simulations': safe_num(n_simulations),
-                'mean_result': safe_num(mean_result),
-                'median_result': safe_num(median_result),
-                'percentile_10': safe_num(percentile_10),
-                'percentile_90': safe_num(percentile_90),
-                'probability_above_target': safe_num(probability_above_target),
-                'years_simulated': safe_num(years_to_retirement)
+                "simulations": safe_num(n_simulations),
+                "mean_result": safe_num(mean_result),
+                "median_result": safe_num(median_result),
+                "percentile_10": safe_num(percentile_10),
+                "percentile_90": safe_num(percentile_90),
+                "probability_above_target": safe_num(probability_above_target),
+                "years_simulated": safe_num(years_to_retirement),
             }
         except Exception as e:
-            return {'error': str(e)}
+            return {"error": str(e)}
 
     def find_similar_peers(self, user_id: str) -> Dict[str, Any]:
         """Find similar peers for a user"""
         try:
-            user_data = self.df[self.df['User_ID'] == user_id]
+            user_data = self.df[self.df["User_ID"] == user_id]
             if user_data.empty:
-                return {'error': 'User not found'}
-            
+                return {"error": "User not found"}
+
             user = user_data.iloc[0]
-            
-            if 'peer_matching' not in self.models:
-                return {'error': 'Peer matching model not trained'}
-            
-            model_data = self.models['peer_matching']
-            peer_features = model_data['features']
-            
+
+            if "peer_matching" not in self.models:
+                return {"error": "Peer matching model not trained"}
+
+            model_data = self.models["peer_matching"]
+            peer_features = model_data["features"]
+
             # Prepare user features
             user_features = user[peer_features].values.reshape(1, -1)
-            
+
             # Scale features
-            user_features_scaled = model_data['scaler'].transform(user_features)
-            
+            user_features_scaled = model_data["scaler"].transform(user_features)
+
             # Find similar users
-            distances, indices = model_data['knn_model'].kneighbors(user_features_scaled)
-            
+            distances, indices = model_data["knn_model"].kneighbors(
+                user_features_scaled
+            )
+
             # Get peer information
-            peer_ids = model_data['user_ids'][indices[0]]
+            peer_ids = model_data["user_ids"][indices[0]]
             peer_distances = distances[0]
-            
+
             # Calculate peer statistics
-            peer_data = self.df[self.df['User_ID'].isin(peer_ids)]
-            
+            peer_data = self.df[self.df["User_ID"].isin(peer_ids)]
+
             return {
-                'total_peers_found': safe_num(len(peer_ids)),
-                'similar_users': peer_ids.tolist(),
-                'distances': peer_distances.tolist(),
-                'peer_stats': {
-                    'avg_age': safe_num(peer_data['Age'].mean()),
-                    'avg_income': safe_num(peer_data['Annual_Income'].mean()),
-                    'avg_savings': safe_num(peer_data['Current_Savings'].mean()),
-                    'avg_contribution': safe_num(peer_data['Contribution_Amount'].mean())
-                }
+                "total_peers_found": safe_num(len(peer_ids)),
+                "similar_users": peer_ids.tolist(),
+                "distances": peer_distances.tolist(),
+                "peer_stats": {
+                    "avg_age": safe_num(peer_data["Age"].mean()),
+                    "avg_income": safe_num(peer_data["Annual_Income"].mean()),
+                    "avg_savings": safe_num(peer_data["Current_Savings"].mean()),
+                    "avg_contribution": safe_num(
+                        peer_data["Contribution_Amount"].mean()
+                    ),
+                },
             }
         except Exception as e:
-            return {'error': str(e)}
+            return {"error": str(e)}
 
     def optimize_portfolio(self, user_id: str) -> Dict[str, Any]:
         """Optimize portfolio for a user"""
         try:
-            user_data = self.df[self.df['User_ID'] == user_id]
+            user_data = self.df[self.df["User_ID"] == user_id]
             if user_data.empty:
-                return {'error': 'User not found'}
-            
+                return {"error": "User not found"}
+
             user = user_data.iloc[0]
-            
-            if 'portfolio_optimization' not in self.models:
-                return {'error': 'Portfolio optimization model not configured'}
-            
-            config = self.models['portfolio_optimization']
-            fund_names = config['fund_names']
-            expected_returns = config['expected_returns']
-            cov_matrix = config['covariance_matrix']
-            
+
+            if "portfolio_optimization" not in self.models:
+                return {"error": "Portfolio optimization model not configured"}
+
+            config = self.models["portfolio_optimization"]
+            fund_names = config["fund_names"]
+            expected_returns = config["expected_returns"]
+            cov_matrix = config["covariance_matrix"]
+
             # User risk tolerance
-            risk_tolerance = user.get('Risk_Tolerance', 'Medium')
-            risk_multiplier = {'Low': 0.5, 'Medium': 1.0, 'High': 1.5}.get(risk_tolerance, 1.0)
-            
+            risk_tolerance = user.get("Risk_Tolerance", "Medium")
+            risk_multiplier = {"Low": 0.5, "Medium": 1.0, "High": 1.5}.get(
+                risk_tolerance, 1.0
+            )
+
             # Simple optimization (equal weight for now)
             n_funds = len(fund_names)
             equal_weights = np.ones(n_funds) / n_funds
-            
+
             # Calculate portfolio metrics
             portfolio_return = np.dot(equal_weights, expected_returns)
-            portfolio_variance = np.dot(equal_weights, np.dot(cov_matrix, equal_weights))
+            portfolio_variance = np.dot(
+                equal_weights, np.dot(cov_matrix, equal_weights)
+            )
             portfolio_volatility = np.sqrt(portfolio_variance)
-            
+
             # Create allocation
             allocation = []
             for i, fund_name in enumerate(fund_names):
-                allocation.append({
-                    'fund_name': fund_name,
-                    'allocation_percent': safe_num(equal_weights[i] * 100),
-                    'expected_return': safe_num(expected_returns[i]),
-                    'volatility': safe_num(np.sqrt(cov_matrix[i, i]))
-                })
-            
+                allocation.append(
+                    {
+                        "fund_name": fund_name,
+                        "allocation_percent": safe_num(equal_weights[i] * 100),
+                        "expected_return": safe_num(expected_returns[i]),
+                        "volatility": safe_num(np.sqrt(cov_matrix[i, i])),
+                    }
+                )
+
             return {
-                'optimized_allocation': allocation,
-                'expected_return': safe_num(portfolio_return),
-                'expected_volatility': safe_num(portfolio_volatility),
-                'risk_tolerance': risk_tolerance,
-                'recommendations': self.get_portfolio_recommendations(allocation, user.get('Fund_Name', 'Unknown'))
+                "optimized_allocation": allocation,
+                "expected_return": safe_num(portfolio_return),
+                "expected_volatility": safe_num(portfolio_volatility),
+                "risk_tolerance": risk_tolerance,
+                "recommendations": self.get_portfolio_recommendations(
+                    allocation, user.get("Fund_Name", "Unknown")
+                ),
             }
         except Exception as e:
-            return {'error': str(e)}
+            return {"error": str(e)}

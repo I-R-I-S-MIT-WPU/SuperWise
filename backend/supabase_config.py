@@ -1,24 +1,109 @@
 import os
-from dotenv import load_dotenv
-from supabase import create_client, Client
 
-# Load environment variables from project root
-env_path = os.path.join(os.path.dirname(__file__), "..", ".env")
-try:
-    load_dotenv(env_path)
-except Exception as e:
-    print(f"Warning: Could not load .env file at {env_path}: {e}")
-    # Use default values if .env loading fails
+import pandas as pd
+from dotenv import load_dotenv
+from supabase import Client, create_client
+
+# Load environment variables from backend or project root
+env_paths = [
+    os.path.join(os.path.dirname(__file__), ".env"),
+    os.path.join(os.path.dirname(__file__), "..", ".env"),
+]
+for env_path in env_paths:
+    if os.path.exists(env_path):
+        try:
+            load_dotenv(env_path, encoding="utf-8")
+        except Exception as e:
+            print(f"Warning: Could not load .env file at {env_path}: {e}")
 
 # Supabase configuration
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://imtmbgbktomztqtoyuvh.supabase.co")
-SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImltdG1iZ2JrdG9tenRxdG95dXZoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NzQzMzUwMSwiZXhwIjoyMDczMDA5NTAxfQ.skNHNAimBcivIo18Lm9XzEB6oi7Fz7WHP3EMmVbpRQc")
+SUPABASE_SERVICE_KEY = os.getenv(
+    "SUPABASE_SERVICE_KEY",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImltdG1iZ2JrdG9tenRxdG95dXZoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NzQzMzUwMSwiZXhwIjoyMDczMDA5NTAxfQ.skNHNAimBcivIo18Lm9XzEB6oi7Fz7WHP3EMmVbpRQc",
+)
 
 # Initialize Supabase client
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
 # Database table names
 USER_PROFILES_TABLE = "MUFG"
+
+_LOCAL_CSV_CACHE = None
+
+
+def _local_csv_paths() -> list[str]:
+    return [
+        os.path.join(os.path.dirname(__file__), "case1.csv"),
+        os.path.join(os.path.dirname(__file__), "..", "case1.csv"),
+    ]
+
+
+def load_local_user_profiles_dataframe() -> pd.DataFrame:
+    """Load user profiles from local CSV as a fallback when Supabase is unavailable."""
+    global _LOCAL_CSV_CACHE
+    if _LOCAL_CSV_CACHE is not None:
+        return _LOCAL_CSV_CACHE
+
+    for path in _local_csv_paths():
+        if os.path.exists(path):
+            _LOCAL_CSV_CACHE = pd.read_csv(path)
+            print(f"Loaded local dataset from {path} ({len(_LOCAL_CSV_CACHE)} rows)")
+            return _LOCAL_CSV_CACHE
+
+    print("Warning: case1.csv not found. Returning empty DataFrame.")
+    _LOCAL_CSV_CACHE = pd.DataFrame()
+    return _LOCAL_CSV_CACHE
+
+
+def load_user_profiles_dataframe(
+    prefer_supabase: bool = True,
+) -> tuple[pd.DataFrame, str]:
+    """Load user profiles from Supabase, falling back to local CSV if needed."""
+    if prefer_supabase:
+        try:
+            response = supabase.table(USER_PROFILES_TABLE).select("*").execute()
+            if response.data:
+                return pd.DataFrame(response.data), "supabase"
+            print("Supabase returned no data. Falling back to local CSV.")
+        except Exception as e:
+            print(f"Error loading data from Supabase: {e}")
+
+    return load_local_user_profiles_dataframe(), "local_csv"
+
+
+def get_local_csv_path() -> str:
+    """Return the local CSV path to use for persistence."""
+    for path in _local_csv_paths():
+        if os.path.exists(path):
+            return path
+    return _local_csv_paths()[0]
+
+
+def append_user_profile_to_local_csv(user_data: dict) -> str:
+    """Append a user profile to the local CSV dataset and refresh cache."""
+    global _LOCAL_CSV_CACHE
+
+    target_path = get_local_csv_path()
+    df = load_local_user_profiles_dataframe()
+
+    # If no existing CSV, create a new one with provided columns
+    if df.empty and not os.path.exists(target_path):
+        new_df = pd.DataFrame([user_data])
+        new_df.to_csv(target_path, index=False)
+        _LOCAL_CSV_CACHE = new_df
+        return target_path
+
+    # Align to existing columns when CSV exists
+    columns = list(df.columns) if len(df.columns) else list(user_data.keys())
+    row = {col: user_data.get(col, None) for col in columns}
+    updated_df = pd.concat(
+        [df, pd.DataFrame([row], columns=columns)], ignore_index=True
+    )
+    updated_df.to_csv(target_path, index=False)
+    _LOCAL_CSV_CACHE = updated_df
+    return target_path
+
 
 # User profile model - mapped to MUFG table columns
 class UserProfile:
@@ -51,8 +136,8 @@ class UserProfile:
         self.pension_type = data.get("Pension_Type")
         self.withdrawal_strategy = data.get("Withdrawal_Strategy")
         self.created_at = data.get("created_at", "N/A")  # Not in MUFG table
-        self.updated_at = data.get("updated_at", "N/A")   # Not in MUFG table
-        
+        self.updated_at = data.get("updated_at", "N/A")  # Not in MUFG table
+
         # Additional MUFG-specific fields
         self.total_annual_contribution = data.get("Total_Annual_Contribution")
         self.annual_return_rate = data.get("Annual_Return_Rate")
@@ -71,7 +156,7 @@ class UserProfile:
         self.tax_benefits_eligibility = data.get("Tax_Benefits_Eligibility")
         self.government_pension_eligibility = data.get("Government_Pension_Eligibility")
         self.private_pension_eligibility = data.get("Private_Pension_Eligibility")
-    
+
     def to_dict(self):
         """Convert UserProfile to dictionary"""
         return {
@@ -121,8 +206,9 @@ class UserProfile:
             "portfolio_diversity_score": self.portfolio_diversity_score,
             "tax_benefits_eligibility": self.tax_benefits_eligibility,
             "government_pension_eligibility": self.government_pension_eligibility,
-            "private_pension_eligibility": self.private_pension_eligibility
+            "private_pension_eligibility": self.private_pension_eligibility,
         }
+
 
 # Supabase service functions
 class SupabaseService:
@@ -130,24 +216,38 @@ class SupabaseService:
     async def get_user_profile(user_id: str) -> UserProfile:
         """Get user profile by ID"""
         try:
-            response = supabase.table(USER_PROFILES_TABLE).select("*").eq("User_ID", user_id).execute()
+            response = (
+                supabase.table(USER_PROFILES_TABLE)
+                .select("*")
+                .eq("User_ID", user_id)
+                .execute()
+            )
             if response.data:
                 return UserProfile(response.data[0])
-            return None
         except Exception as e:
-            print(f"Error fetching user profile: {e}")
-            return None
+            print(f"Error fetching user profile from Supabase: {e}")
+
+        df = load_local_user_profiles_dataframe()
+        if not df.empty and "User_ID" in df.columns:
+            user_data = df[df["User_ID"] == user_id]
+            if not user_data.empty:
+                return UserProfile(user_data.iloc[0].to_dict())
+        return None
 
     @staticmethod
     async def get_all_user_profiles() -> list[UserProfile]:
         """Get all user profiles"""
         try:
             response = supabase.table(USER_PROFILES_TABLE).select("*").execute()
-            return [UserProfile(user_data) for user_data in response.data]
+            if response.data:
+                return [UserProfile(user_data) for user_data in response.data]
         except Exception as e:
-            print(f"Error fetching all user profiles: {e}")
-            # Return empty list when Supabase is not available
-            return []
+            print(f"Error fetching all user profiles from Supabase: {e}")
+
+        df = load_local_user_profiles_dataframe()
+        if not df.empty:
+            return [UserProfile(row) for row in df.to_dict(orient="records")]
+        return []
 
     @staticmethod
     async def create_user_profile(user_data: dict) -> bool:
@@ -163,7 +263,12 @@ class SupabaseService:
     async def update_user_profile(user_id: str, updates: dict) -> bool:
         """Update user profile"""
         try:
-            response = supabase.table(USER_PROFILES_TABLE).update(updates).eq("id", user_id).execute()
+            response = (
+                supabase.table(USER_PROFILES_TABLE)
+                .update(updates)
+                .eq("id", user_id)
+                .execute()
+            )
             return len(response.data) > 0
         except Exception as e:
             print(f"Error updating user profile: {e}")
@@ -173,7 +278,9 @@ class SupabaseService:
     async def delete_user_profile(user_id: str) -> bool:
         """Delete user profile"""
         try:
-            response = supabase.table(USER_PROFILES_TABLE).delete().eq("id", user_id).execute()
+            response = (
+                supabase.table(USER_PROFILES_TABLE).delete().eq("id", user_id).execute()
+            )
             return True
         except Exception as e:
             print(f"Error deleting user profile: {e}")
@@ -183,37 +290,117 @@ class SupabaseService:
     async def search_users(search_term: str) -> list[UserProfile]:
         """Search users by name or email"""
         try:
-            response = supabase.table(USER_PROFILES_TABLE).select("*").or_(f"name.ilike.%{search_term}%,email.ilike.%{search_term}%").execute()
-            return [UserProfile(user_data) for user_data in response.data]
+            response = (
+                supabase.table(USER_PROFILES_TABLE)
+                .select("*")
+                .or_(f"name.ilike.%{search_term}%,email.ilike.%{search_term}%")
+                .execute()
+            )
+            if response.data:
+                return [UserProfile(user_data) for user_data in response.data]
         except Exception as e:
-            print(f"Error searching users: {e}")
+            print(f"Error searching users in Supabase: {e}")
+
+        df = load_local_user_profiles_dataframe()
+        if df.empty:
             return []
+
+        matches = pd.Series(False, index=df.index)
+        if "Name" in df.columns:
+            matches |= (
+                df["Name"].astype(str).str.contains(search_term, case=False, na=False)
+            )
+        if "email" in df.columns:
+            matches |= (
+                df["email"].astype(str).str.contains(search_term, case=False, na=False)
+            )
+
+        if matches.any():
+            return [UserProfile(row) for row in df[matches].to_dict(orient="records")]
+        return []
 
     @staticmethod
     async def get_users_by_filter(filter_type: str, value: str) -> list[UserProfile]:
         """Get users by specific filter"""
         try:
             if filter_type == "risk_tolerance":
-                response = supabase.table(USER_PROFILES_TABLE).select("*").eq("risk_tolerance", value).execute()
+                response = (
+                    supabase.table(USER_PROFILES_TABLE)
+                    .select("*")
+                    .eq("risk_tolerance", value)
+                    .execute()
+                )
             elif filter_type == "age_range":
                 min_age, max_age = map(int, value.split("-"))
-                response = supabase.table(USER_PROFILES_TABLE).select("*").gte("age", min_age).lte("age", max_age).execute()
+                response = (
+                    supabase.table(USER_PROFILES_TABLE)
+                    .select("*")
+                    .gte("age", min_age)
+                    .lte("age", max_age)
+                    .execute()
+                )
             elif filter_type == "income_range":
                 min_income, max_income = map(float, value.split("-"))
-                response = supabase.table(USER_PROFILES_TABLE).select("*").gte("annual_income", min_income).lte("annual_income", max_income).execute()
+                response = (
+                    supabase.table(USER_PROFILES_TABLE)
+                    .select("*")
+                    .gte("annual_income", min_income)
+                    .lte("annual_income", max_income)
+                    .execute()
+                )
             else:
                 response = supabase.table(USER_PROFILES_TABLE).select("*").execute()
-            
-            return [UserProfile(user_data) for user_data in response.data]
+
+            if response.data:
+                return [UserProfile(user_data) for user_data in response.data]
         except Exception as e:
-            print(f"Error filtering users: {e}")
+            print(f"Error filtering users in Supabase: {e}")
+
+        df = load_local_user_profiles_dataframe()
+        if df.empty:
             return []
+
+        try:
+            if filter_type == "risk_tolerance":
+                col = (
+                    "Risk_Tolerance"
+                    if "Risk_Tolerance" in df.columns
+                    else "risk_tolerance"
+                )
+                if col in df.columns:
+                    filtered = df[df[col].astype(str).str.lower() == value.lower()]
+                else:
+                    filtered = df.iloc[0:0]
+            elif filter_type == "age_range":
+                min_age, max_age = map(int, value.split("-"))
+                col = "Age" if "Age" in df.columns else "age"
+                if col in df.columns:
+                    filtered = df[(df[col] >= min_age) & (df[col] <= max_age)]
+                else:
+                    filtered = df.iloc[0:0]
+            elif filter_type == "income_range":
+                min_income, max_income = map(float, value.split("-"))
+                col = (
+                    "Annual_Income"
+                    if "Annual_Income" in df.columns
+                    else "annual_income"
+                )
+                if col in df.columns:
+                    filtered = df[(df[col] >= min_income) & (df[col] <= max_income)]
+                else:
+                    filtered = df.iloc[0:0]
+            else:
+                filtered = df
+        except Exception:
+            filtered = df.iloc[0:0]
+
+        return [UserProfile(row) for row in filtered.to_dict(orient="records")]
 
     @staticmethod
     def get_mock_user_profiles() -> list[UserProfile]:
         """Get mock user profiles for testing when Supabase is not available"""
         import datetime
-        
+
         mock_users = [
             {
                 "id": "user-001",
@@ -243,7 +430,7 @@ class SupabaseService:
                 "insurance_coverage": "Comprehensive",
                 "pension_type": "Superannuation",
                 "withdrawal_strategy": "Balanced",
-                "created_at": "2024-01-15T10:30:00Z"
+                "created_at": "2024-01-15T10:30:00Z",
             },
             {
                 "id": "user-002",
@@ -273,7 +460,7 @@ class SupabaseService:
                 "insurance_coverage": "Basic",
                 "pension_type": "Superannuation",
                 "withdrawal_strategy": "Aggressive",
-                "created_at": "2024-02-20T14:15:00Z"
+                "created_at": "2024-02-20T14:15:00Z",
             },
             {
                 "id": "user-003",
@@ -303,7 +490,7 @@ class SupabaseService:
                 "insurance_coverage": "Comprehensive",
                 "pension_type": "Superannuation",
                 "withdrawal_strategy": "Conservative",
-                "created_at": "2024-01-05T09:45:00Z"
+                "created_at": "2024-01-05T09:45:00Z",
             },
             {
                 "id": "user-004",
@@ -333,7 +520,7 @@ class SupabaseService:
                 "insurance_coverage": "Standard",
                 "pension_type": "Superannuation",
                 "withdrawal_strategy": "Balanced",
-                "created_at": "2024-03-10T16:20:00Z"
+                "created_at": "2024-03-10T16:20:00Z",
             },
             {
                 "id": "user-005",
@@ -363,8 +550,8 @@ class SupabaseService:
                 "insurance_coverage": "Basic",
                 "pension_type": "Superannuation",
                 "withdrawal_strategy": "Aggressive",
-                "created_at": "2024-02-28T11:30:00Z"
-            }
+                "created_at": "2024-02-28T11:30:00Z",
+            },
         ]
-        
+
         return [UserProfile(user_data) for user_data in mock_users]

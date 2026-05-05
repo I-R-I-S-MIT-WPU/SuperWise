@@ -1,4 +1,8 @@
 #!/bin/bash
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
 
 echo "🚀 Setting up Superannuation AI Advisor"
 echo "======================================"
@@ -19,14 +23,25 @@ fi
 
 echo "✅ Python 3 and Node.js are installed"
 
+# Create virtual environment if missing
+echo "📦 Ensuring virtual environment..."
+if [ ! -d ".venv" ]; then
+    python3 -m venv .venv
+fi
+
+# Activate virtual environment
+source .venv/bin/activate
+
 # Install Python dependencies
 echo "📦 Installing Python dependencies..."
-pip3 install -r requirements.txt
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt --upgrade
 
 # Install Node.js dependencies
 echo "📦 Installing Node.js dependencies..."
-cd ..
+pushd .. > /dev/null
 npm install
+popd > /dev/null
 
 # Create models directory
 echo "📁 Creating models directory..."
@@ -34,8 +49,7 @@ mkdir -p models
 
 # Train ML models
 echo "🤖 Training ML models..."
-cd backend
-python3 train.py
+python train.py
 
 # Check if models were created successfully
 if [ ! -f "models/kmeans_model.pkl" ]; then
@@ -56,8 +70,8 @@ echo ""
 echo "🎉 Setup complete!"
 echo ""
 echo "To start the application:"
-echo "1. Edit .env file and add your Hugging Face token"
-echo "2. Start the ML backend: python3 api.py"
+echo "1. Activate the venv: source .venv/bin/activate"
+echo "2. Start the ML backend: python api.py"
 echo "3. Start the frontend: npm run dev"
 echo ""
 echo "The application will be available at:"

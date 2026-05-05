@@ -1,4 +1,9 @@
 @echo off
+setlocal
+
+REM Ensure script runs from its own directory (backend)
+cd /d %~dp0
+
 echo 🚀 Setting up Superannuation AI Advisor
 echo ======================================
 
@@ -22,14 +27,25 @@ if %errorlevel% neq 0 (
 
 echo ✅ Python and Node.js are installed
 
+REM Create virtual environment if missing
+echo 📦 Ensuring virtual environment...
+if not exist .venv (
+    python -m venv .venv
+)
+
+REM Activate virtual environment
+call .venv\Scripts\activate
+
 REM Install Python dependencies
 echo 📦 Installing Python dependencies...
-pip install -r requirements.txt
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt --upgrade
 
 REM Install Node.js dependencies
 echo 📦 Installing Node.js dependencies...
-cd ..
+pushd ..
 npm install
+popd
 
 REM Create models directory
 echo 📁 Creating models directory...
@@ -59,7 +75,7 @@ echo.
 echo 🎉 Setup complete!
 echo.
 echo To start the application:
-echo 1. Edit .env file and add your Hugging Face token
+echo 1. Activate the venv: .venv\Scripts\activate
 echo 2. Start the ML backend: python api.py
 echo 3. Start the frontend: npm run dev
 echo.
