@@ -2,105 +2,119 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Fintech Dashboard Design System - Accessible for older Australians */
+/* Fintech Dashboard Design System - Professional & Accessible */
 
 @layer base {
   :root {
-    /* High-contrast fintech palette for accessibility */
+    /* Light mode - Professional & Clean */
     --background: 0 0% 100%;
     --foreground: 0 0% 10%;
     
-    /* Trust & Professional - High contrast */
-    --primary: 220 100% 25%;
+    /* Primary - Modern Blue */
+    --primary: 217 91% 60%;
     --primary-foreground: 0 0% 100%;
-    --primary-light: 220 100% 95%;
+    --primary-light: 217 100% 97%;
     
-    /* Financial success indicators - High contrast */
-    --success: 120 100% 25%;
+    /* Success - Professional Green */
+    --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
-    --success-light: 120 100% 95%;
+    --success-light: 142 100% 96%;
     
-    /* Warning/attention - High contrast */
-    --warning: 45 100% 40%;
+    /* Warning - Alert Orange */
+    --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
-    --warning-light: 45 100% 95%;
+    --warning-light: 38 100% 96%;
     
-    /* Risk/danger - High contrast */
-    --danger: 0 100% 40%;
+    /* Danger - Risk Red */
+    --danger: 0 84% 60%;
     --danger-foreground: 0 0% 100%;
-    --danger-light: 0 100% 95%;
+    --danger-light: 0 100% 97%;
     
-    /* Neutral tones - High contrast */
+    /* Neutral - Professional Gray */
     --neutral: 0 0% 20%;
     --neutral-foreground: 0 0% 100%;
-    --neutral-light: 0 0% 95%;
+    --neutral-light: 0 0% 97%;
     
-    /* Card system - High contrast */
+    /* Card System */
     --card: 0 0% 100%;
     --card-foreground: 0 0% 10%;
-    --card-border: 0 0% 80%;
+    --card-border: 0 0% 92%;
     
-    /* Interface elements - High contrast */
-    --border: 0 0% 80%;
-    --input: 0 0% 95%;
-    --ring: 220 100% 25%;
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 40%;
+    /* Interface Elements */
+    --border: 0 0% 92%;
+    --input: 0 0% 97%;
+    --ring: 217 91% 60%;
+    --muted: 0 0% 97%;
+    --muted-foreground: 0 0% 45%;
     
-    /* Shadows & effects - Enhanced for accessibility */
-    --shadow-soft: 0 4px 6px -1px rgba(0, 0, 0, 0.15);
-    --shadow-card: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
-    --gradient-primary: linear-gradient(135deg, hsl(220, 100%, 25%), hsl(220, 100%, 35%));
-    --gradient-success: linear-gradient(135deg, hsl(120, 100%, 25%), hsl(120, 100%, 35%));
+    /* Shadows & Effects */
+    --shadow-soft: 0 2px 8px -1px rgba(0, 0, 0, 0.08);
+    --shadow-card: 0 4px 16px -2px rgba(0, 0, 0, 0.12);
+    --shadow-lg: 0 20px 40px -10px rgba(0, 0, 0, 0.15);
+    --gradient-primary: linear-gradient(135deg, hsl(217, 91%, 60%), hsl(217, 85%, 50%));
+    --gradient-success: linear-gradient(135deg, hsl(142, 71%, 45%), hsl(142, 76%, 35%));
     
     --radius: 12px;
 
-    --sidebar-background: 0 0% 98%;
+    /* Sidebar */
+    --sidebar-background: 0 0% 99%;
     --sidebar-foreground: 0 0% 20%;
-    --sidebar-primary: 220 100% 25%;
+    --sidebar-primary: 217 91% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 95%;
+    --sidebar-accent: 217 100% 97%;
     --sidebar-accent-foreground: 0 0% 20%;
-    --sidebar-border: 0 0% 80%;
-    --sidebar-ring: 220 100% 25%;
+    --sidebar-border: 0 0% 92%;
+    --sidebar-ring: 217 91% 60%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    /* Dark mode - Modern & Eye-friendly */
+    --background: 223 14% 9%;
+    --foreground: 0 0% 96%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    /* Primary - Electric Cyan */
+    --primary: 193 100% 62%;
+    --primary-foreground: 0 0% 100%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    /* Card - Deep charcoal */
+    --card: 220 18% 11%;
+    --card-foreground: 0 0% 96%;
+    --card-border: 223 18% 17%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    /* Success - Emerald */
+    --success: 154 78% 55%;
+    --success-foreground: 0 0% 100%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    /* Warning - Amber */
+    --warning: 42 92% 58%;
+    --warning-foreground: 0 0% 100%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    /* Danger - Ember Red */
+    --danger: 358 85% 62%;
+    --danger-foreground: 0 0% 100%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    /* Neutral */
+    --neutral: 0 0% 88%;
+    --neutral-foreground: 217 16% 18%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    /* Muted */
+    --muted: 222 18% 14%;
+    --muted-foreground: 210 17% 72%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
+    /* Border & Input */
+    --border: 223 18% 18%;
+    --input: 223 18% 12%;
+    --ring: 193 100% 62%;
+    
+    /* Sidebar */
+    --sidebar-background: 223 14% 9%;
+    --sidebar-foreground: 0 0% 96%;
+    --sidebar-primary: 193 100% 62%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-accent: 223 18% 12%;
+    --sidebar-accent-foreground: 0 0% 96%;
+    --sidebar-border: 223 18% 16%;
+    --sidebar-ring: 193 100% 62%;
   }
 }
 
@@ -109,45 +123,47 @@
     @apply border-border;
   }
 
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
-    @apply bg-background text-foreground;
-    font-size: 18px; /* Larger base font size for accessibility */
-    line-height: 1.7; /* Increased line height for readability */
+    @apply bg-background text-foreground transition-colors duration-300;
+    font-size: 16px;
+    line-height: 1.6;
     font-weight: 400;
   }
   
-  /* Enhanced accessibility typography for older users */
+  /* Professional Typography */
   h1 { 
-    @apply text-5xl md:text-6xl font-bold leading-tight;
+    @apply text-4xl md:text-5xl font-bold leading-tight;
     font-weight: 700;
     letter-spacing: -0.02em;
   }
   h2 { 
-    @apply text-4xl md:text-5xl font-semibold leading-tight;
-    font-weight: 600;
+    @apply text-3xl md:text-4xl font-bold leading-tight;
+    font-weight: 700;
     letter-spacing: -0.01em;
   }
   h3 { 
-    @apply text-3xl md:text-4xl font-semibold leading-normal;
+    @apply text-2xl md:text-3xl font-semibold leading-normal;
     font-weight: 600;
   }
   h4 { 
-    @apply text-2xl md:text-3xl font-medium leading-normal;
-    font-weight: 500;
+    @apply text-xl md:text-2xl font-semibold leading-normal;
+    font-weight: 600;
   }
   
-  /* Large text utilities for accessibility */
-  .text-large { @apply text-xl md:text-2xl; }
-  .text-xlarge { @apply text-2xl md:text-3xl; }
-  .text-xxlarge { @apply text-3xl md:text-4xl; }
+  /* Utility Typography */
+  .text-large { @apply text-lg md:text-xl; }
+  .text-xlarge { @apply text-xl md:text-2xl; }
   
-  /* Focus indicators for accessibility */
+  /* Focus indicators */
   *:focus-visible {
-    outline: 3px solid hsl(var(--primary));
+    outline: 2px solid hsl(var(--primary));
     outline-offset: 2px;
   }
-  
-  /* High contrast button states */
+
   button:hover {
     transform: translateY(-1px);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
@@ -163,82 +179,55 @@
 }
 
 @layer components {
-  /* Enhanced Dashboard Card Variants for Accessibility */
+  /* Professional Dashboard Cards */
   .dashboard-card {
-    @apply bg-card border-2 border-card-border rounded-xl p-8 card-shadow transition-all duration-200 hover:shadow-lg;
-    min-height: 200px; /* Ensure consistent card heights */
+    @apply bg-card border border-card-border rounded-lg p-6 transition-all duration-200 hover:shadow-lg;
   }
   
   .metric-card {
     @apply dashboard-card text-center;
-    min-height: 180px;
   }
   
   .summary-card {
-    @apply dashboard-card bg-gradient-to-br from-primary to-primary/90 text-primary-foreground;
-    border: 3px solid hsl(var(--primary));
+    @apply dashboard-card bg-slate-950/90 border border-border/50 text-foreground;
+    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.24);
   }
   
-  /* High-contrast status indicators */
-  .status-good { 
-    @apply bg-green-100 text-green-800 border-2 border-green-300 font-semibold; 
-  }
-  .status-warning { 
-    @apply bg-yellow-100 text-yellow-800 border-2 border-yellow-300 font-semibold; 
-  }
-  .status-risk { 
-    @apply bg-red-100 text-red-800 border-2 border-red-300 font-semibold; 
-  }
-  .status-neutral { 
-    @apply bg-gray-100 text-gray-800 border-2 border-gray-300 font-semibold; 
-  }
-  
-  /* Enhanced button variants for accessibility */
+  /* Professional Button Styles */
   .btn-action {
-    @apply bg-primary text-primary-foreground hover:bg-primary/90 px-8 py-4 rounded-xl font-semibold text-xl transition-all duration-200 border-2 border-primary;
-    min-height: 56px; /* Minimum touch target size */
+    @apply bg-primary text-primary-foreground hover:bg-primary/90 px-6 py-2.5 rounded-lg font-semibold transition-all duration-200 border border-transparent dark:bg-slate-950 dark:text-white dark:hover:bg-slate-900;
   }
   
   .btn-secondary {
-    @apply bg-card border-2 border-card-border hover:bg-muted px-8 py-4 rounded-xl font-semibold text-xl transition-all duration-200;
-    min-height: 56px; /* Minimum touch target size */
+    @apply bg-muted text-foreground hover:bg-muted/80 px-6 py-2.5 rounded-lg font-semibold transition-all duration-200 border border-border dark:bg-slate-950 dark:text-white dark:hover:bg-slate-900 dark:border-transparent;
   }
   
-  /* Accessibility-focused form elements */
+  /* Form Elements */
   .form-input {
-    @apply border-2 border-border rounded-xl px-4 py-3 text-lg font-medium;
-    min-height: 48px;
+    @apply border border-border rounded-lg px-4 py-2.5 text-base font-medium bg-input transition-colors;
   }
   
   .form-input:focus {
     @apply border-primary ring-2 ring-primary/20;
   }
   
-  /* High-contrast progress bars */
-  .progress-bar {
-    @apply bg-gray-200 rounded-full overflow-hidden;
-    height: 12px;
+  /* Professional Status Indicators */
+  .status-good { 
+    @apply bg-success/15 text-success border border-success/30 font-semibold rounded-lg px-3 py-1; 
+  }
+  .status-warning { 
+    @apply bg-warning/15 text-warning border border-warning/30 font-semibold rounded-lg px-3 py-1; 
+  }
+  .status-risk { 
+    @apply bg-danger/15 text-danger border border-danger/30 font-semibold rounded-lg px-3 py-1; 
+  }
+  .status-neutral { 
+    @apply bg-muted text-muted-foreground border border-border font-semibold rounded-lg px-3 py-1; 
   }
   
-  .progress-fill {
-    @apply bg-primary rounded-full transition-all duration-300;
-    height: 100%;
-  }
-  
-  /* Enhanced tooltips for accessibility */
-  .tooltip-content {
-    @apply bg-gray-900 text-white px-3 py-2 rounded-lg text-sm font-medium;
-    max-width: 300px;
-  }
-  
-  /* Large, accessible navigation */
+  /* Navigation Items */
   .nav-item {
-    @apply px-6 py-4 text-lg font-medium rounded-xl transition-all duration-200;
-    min-height: 56px;
-  }
-  
-  .nav-item:hover {
-    @apply bg-muted transform scale-105;
+    @apply px-6 py-4 text-lg font-medium rounded-lg transition-all duration-200 hover:bg-muted;
   }
   
   .nav-item.active {

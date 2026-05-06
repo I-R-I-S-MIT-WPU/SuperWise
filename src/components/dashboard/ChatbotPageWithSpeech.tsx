@@ -372,14 +372,14 @@ export function ChatbotPageWithSpeech({ user }: ChatbotPageProps) {
               <select
                 value={selectedVoice}
                 onChange={(e) => setSelectedVoice(e.target.value)}
-                className="px-3 py-1 border rounded-md"
+                className="px-3 py-2 border border-border rounded-md bg-white dark:bg-slate-950 text-zinc-900 dark:text-white outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                 aria-label="Select voice for text-to-speech"
                 disabled={!speechEnabled}
               >
                 {Object.entries(voices).map(([lang, voiceList]: [string, any]) => (
                   <optgroup key={lang} label={lang.toUpperCase()}>
                     {Array.isArray(voiceList) && voiceList.map((voice: any) => (
-                      <option key={voice.name} value={voice.name}>
+                      <option key={voice.name} value={voice.name} className="bg-white dark:bg-slate-950 text-zinc-900 dark:text-white">
                         {voice.display}
                       </option>
                     ))}
@@ -589,10 +589,10 @@ export function ChatbotPageWithSpeech({ user }: ChatbotPageProps) {
                 key={index}
                 variant="outline"
                 onClick={() => handleSampleQuestion(question)}
-                className="h-auto p-4 text-left justify-start text-lg hover:bg-muted"
+                className="h-auto p-4 text-left justify-start text-lg hover:bg-muted whitespace-normal"
               >
-                <MessageCircle className="w-4 h-4 mr-2 flex-shrink-0" />
-                {question}
+                <MessageCircle className="w-4 h-4 mr-2 flex-shrink-0 mt-1 self-start" />
+                <span className="flex-1 text-left">{question}</span>
               </Button>
             ))}
           </div>

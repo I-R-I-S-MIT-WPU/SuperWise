@@ -197,10 +197,10 @@ export function ChatbotPage({ user }: ChatbotPageProps) {
                 key={index}
                 variant="outline"
                 onClick={() => handleSampleQuestion(question)}
-                className="h-auto p-4 text-left justify-start text-lg hover:bg-muted"
+                className="h-auto p-4 text-left justify-start text-lg hover:bg-muted flex flex-wrap items-start whitespace-normal"
               >
-                <MessageCircle className="w-4 h-4 mr-2 flex-shrink-0" />
-                {question}
+                <MessageCircle className="w-4 h-4 mr-2 flex-shrink-0 mt-1" />
+                <span>{question}</span>
               </Button>
             ))}
           </div>

@@ -16,11 +16,13 @@ import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { SupabaseService } from "@/services/supabaseService";
 
 import { LogOut, User, ArrowLeft } from "lucide-react";
+import { useTheme } from "@/contexts/ThemeContext";
 
 export default function Dashboard() {
   console.log("Dashboard component rendering...");
   const { user, loading: authLoading, signOut } = useAuth();
   const { adminUser, isAdminMode, logout: adminLogout } = useAdminAuth();
+  const { ThemeToggle } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const [activeTab, setActiveTab] = useState("chatbot");
@@ -985,29 +987,29 @@ export default function Dashboard() {
   const yearToRetirement = projection?.years_to_retirement || 35;
 
   return (
-    <div className='min-h-screen bg-slate-50'>
+    <div className='min-h-screen bg-background text-foreground'>
       {/* Sticky Header with Backdrop Blur */}
-      <header className='sticky top-0 z-50 border-b border-border/40 bg-white/80 backdrop-blur-sm'>
+      <header className='sticky top-0 z-50 border-b border-border/40 bg-card/95 backdrop-blur-sm'>
         <div className='mx-auto max-w-7xl px-6 h-14 flex items-center justify-between'>
           {/* Left: Logo */}
           <div className='flex items-center gap-2'>
             <div className='w-8 h-8 bg-blue-900 rounded-md flex items-center justify-center'>
               <span className='text-white text-sm font-bold'>FA</span>
             </div>
-            <span className='text-sm font-semibold text-slate-900'>
+            <span className='text-sm font-semibold text-foreground'>
               SuperWise
             </span>
           </div>
 
           {/* Center: Nav Links */}
           {/* <nav className='hidden md:flex items-center gap-8'>
-            <button className='text-sm font-medium text-blue-900 hover:text-blue-700 transition-colors'>
+            <button className='text-sm font-medium text-foreground hover:text-primary transition-colors'>
               Overview
             </button>
-            <button className='text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors'>
+            <button className='text-sm font-medium text-muted-foreground hover:text-foreground transition-colors'>
               Insights
             </button>
-            <button className='text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors'>
+            <button className='text-sm font-medium text-muted-foreground hover:text-foreground transition-colors'>
               Support
             </button>
           </nav> */}
@@ -1023,6 +1025,9 @@ export default function Dashboard() {
                 Back
               </Button>
             )}
+            <div className='hidden sm:flex items-center rounded-full px-1'>
+              <ThemeToggle />
+            </div>
             <Button onClick={handleSignOut} variant='outline' size='sm'>
               <LogOut className='w-3 h-3 mr-1' />
               Sign Out
@@ -1034,7 +1039,7 @@ export default function Dashboard() {
       {/* Main Content */}
       <main className='mx-auto max-w-7xl px-6 py-6 space-y-6'>
         {/* Profile Hero Card */}
-        <div className='bg-white rounded-lg border border-border/60 shadow-sm overflow-hidden'>
+        <div className='bg-card rounded-lg border border-border/60 shadow-sm overflow-hidden'>
           <div className='p-6 space-y-6'>
             {/* Top Section: Split Layout */}
             <div className='grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8'>
@@ -1053,11 +1058,11 @@ export default function Dashboard() {
                 {/* User Info */}
                 <div className='flex-1 min-w-0'>
                   <div className='flex items-center gap-2 mb-1'>
-                    <span className='text-xs font-mono text-muted-foreground bg-slate-100 px-2 py-1 rounded'>
+                    <span className='text-xs font-mono text-muted-foreground bg-muted px-2 py-1 rounded'>
                       {currentUser?.User_ID}
                     </span>
                   </div>
-                  <h1 className='text-3xl font-bold text-slate-900 mb-1'>
+                  <h1 className='text-3xl font-bold text-foreground mb-1'>
                     Welcome back, {currentUser?.Name?.split(" ")[0] || "there"}
                   </h1>
                   <p className='text-sm text-muted-foreground mb-3'>
@@ -1066,16 +1071,16 @@ export default function Dashboard() {
 
                   {/* Badges */}
                   <div className='flex flex-wrap gap-2'>
-                    <span className='inline-block px-3 py-1 bg-blue-50 text-blue-900 text-xs font-medium rounded-full border border-blue-200'>
+                    <span className='inline-block px-3 py-1 bg-primary/10 text-primary text-xs font-medium rounded-full border border-primary/20'>
                       Age {currentUser?.Age || "--"}
                     </span>
-                    <span className='inline-block px-3 py-1 bg-slate-100 text-slate-700 text-xs font-medium rounded-full border border-slate-200'>
+                    <span className='inline-block px-3 py-1 bg-muted text-muted-foreground text-xs font-medium rounded-full border border-border/70'>
                       {currentUser?.Marital_Status || "Not specified"}
                     </span>
-                    <span className='inline-block px-3 py-1 bg-slate-100 text-slate-700 text-xs font-medium rounded-full border border-slate-200'>
+                    <span className='inline-block px-3 py-1 bg-muted text-muted-foreground text-xs font-medium rounded-full border border-border/70'>
                       {currentUser?.Number_of_Dependents || 0} Dependents
                     </span>
-                    <span className='inline-block px-3 py-1 bg-amber-50 text-amber-900 text-xs font-medium rounded-full border border-amber-200'>
+                    <span className='inline-block px-3 py-1 bg-warning/10 text-warning text-xs font-medium rounded-full border border-warning/30'>
                       Risk: {currentUser?.Risk_Tolerance_Level || "Moderate"}
                     </span>
                   </div>
@@ -1104,11 +1109,11 @@ export default function Dashboard() {
                     />
                   </svg>
                 </div>
-                <p className='text-sm text-slate-600 mb-4'>
+                <p className='text-sm text-muted-foreground mb-4'>
                   You're on track to reach your retirement goal
                 </p>
                 {/* Progress Bar */}
-                <div className='w-full h-1 bg-slate-200 rounded-full overflow-hidden'>
+                <div className='w-full h-1 bg-muted/50 rounded-full overflow-hidden'>
                   <div
                     className='h-full bg-emerald-500 transition-all duration-300'
                     style={{
@@ -1128,7 +1133,7 @@ export default function Dashboard() {
                 <span className='text-xs uppercase tracking-wide text-muted-foreground font-semibold'>
                   News Source
                 </span>
-                <select className='text-sm px-3 py-1.5 border border-border/60 rounded-md bg-white text-slate-700'>
+                <select className='text-sm px-3 py-1.5 border border-border/60 rounded-md bg-card text-foreground'>
                   <option>Reuters</option>
                   <option>Bloomberg</option>
                   <option>WSJ</option>
@@ -1154,19 +1159,19 @@ export default function Dashboard() {
         </div>
 
         {/* Financial Snapshot Card */}
-        <div className='bg-white rounded-lg border border-border/60 shadow-sm overflow-hidden'>
+        <div className='bg-card rounded-lg border border-border/60 shadow-sm overflow-hidden'>
           <div className='p-6 space-y-4'>
             {/* Header */}
             <div className='flex items-start justify-between'>
               <div>
-                <h2 className='text-lg font-bold text-slate-900'>
+                <h2 className='text-lg font-bold text-foreground'>
                   Financial Snapshot
                 </h2>
                 <p className='text-xs text-muted-foreground mt-1'>
                   Updated just now
                 </p>
               </div>
-              <span className='inline-block px-2 py-1 bg-emerald-100 text-emerald-700 text-xs font-semibold rounded-full'>
+              <span className='inline-block px-2 py-1 bg-success/15 text-success text-xs font-semibold rounded-full'>
                 Live
               </span>
             </div>
@@ -1175,7 +1180,7 @@ export default function Dashboard() {
             <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-0'>
               {/* Stat 1: Current Balance */}
               <div className='lg:border-r border-border/40 lg:pr-4 space-y-3'>
-                <div className='w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center'>
+                <div className='w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center'>
                   <svg
                     className='w-5 h-5 text-blue-900'
                     fill='currentColor'
@@ -1186,7 +1191,7 @@ export default function Dashboard() {
                 <p className='text-xs uppercase tracking-wide text-muted-foreground font-semibold'>
                   Current Balance
                 </p>
-                <p className='text-2xl font-bold text-slate-900'>
+                <p className='text-2xl font-bold text-foreground'>
                   ${(currentUser?.Current_Savings || 0).toLocaleString()}
                 </p>
                 <p className='text-xs text-emerald-600 font-medium'>
@@ -1196,9 +1201,9 @@ export default function Dashboard() {
 
               {/* Stat 2: Monthly Contribution */}
               <div className='lg:border-r border-border/40 lg:px-4 space-y-3 sm:border-t lg:border-t-0 sm:pt-4 lg:pt-0'>
-                <div className='w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center'>
+                <div className='w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center'>
                   <svg
-                    className='w-5 h-5 text-blue-900'
+                    className='w-5 h-5 text-primary'
                     fill='currentColor'
                     viewBox='0 0 20 20'>
                     <path d='M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z' />
@@ -1208,7 +1213,7 @@ export default function Dashboard() {
                 <p className='text-xs uppercase tracking-wide text-muted-foreground font-semibold'>
                   Monthly Contribution
                 </p>
-                <p className='text-2xl font-bold text-slate-900'>
+                <p className='text-2xl font-bold text-foreground'>
                   ${(currentUser?.Contribution_Amount || 0).toLocaleString()}
                 </p>
                 <p className='text-xs text-emerald-600 font-medium'>
@@ -1218,9 +1223,9 @@ export default function Dashboard() {
 
               {/* Stat 3: Projected at 65 */}
               <div className='lg:border-r border-border/40 lg:px-4 space-y-3 sm:border-t lg:border-t-0 sm:pt-4 lg:pt-0'>
-                <div className='w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center'>
+                <div className='w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center'>
                   <svg
-                    className='w-5 h-5 text-blue-900'
+                    className='w-5 h-5 text-primary'
                     fill='currentColor'
                     viewBox='0 0 20 20'>
                     <path d='M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z' />
@@ -1229,7 +1234,7 @@ export default function Dashboard() {
                 <p className='text-xs uppercase tracking-wide text-muted-foreground font-semibold'>
                   Projected at 65
                 </p>
-                <p className='text-2xl font-bold text-slate-900'>
+                <p className='text-2xl font-bold text-foreground'>
                   $
                   {(
                     projection?.adjusted_projection || goalProgress.target
@@ -1242,9 +1247,9 @@ export default function Dashboard() {
 
               {/* Stat 4: Years to Retirement */}
               <div className='lg:px-4 space-y-3 sm:border-t lg:border-t-0 sm:pt-4 lg:pt-0'>
-                <div className='w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center'>
+                <div className='w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center'>
                   <svg
-                    className='w-5 h-5 text-blue-900'
+                    className='w-5 h-5 text-primary'
                     fill='currentColor'
                     viewBox='0 0 20 20'>
                     <path
@@ -1257,7 +1262,7 @@ export default function Dashboard() {
                 <p className='text-xs uppercase tracking-wide text-muted-foreground font-semibold'>
                   Years to Retirement
                 </p>
-                <p className='text-2xl font-bold text-slate-900'>
+                <p className='text-2xl font-bold text-foreground'>
                   {yearToRetirement}
                 </p>
                 <p className='text-xs text-emerald-600 font-medium'>
@@ -1272,7 +1277,7 @@ export default function Dashboard() {
         <div className='grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-6'>
           {/* Sidebar Navigation */}
           <div className='lg:sticky lg:top-14 lg:h-[calc(100vh-3.5rem)] space-y-2'>
-            <div className='bg-white rounded-lg border border-border/60 shadow-sm p-2 lg:overflow-y-auto'>
+            <div className='bg-card rounded-lg border border-border/60 shadow-sm p-2 lg:overflow-y-auto'>
               {[
                 { id: "chatbot", label: "Chatbot", icon: "chat" },
                 { id: "dashboard", label: "Dashboard", icon: "grid" },
@@ -1288,7 +1293,7 @@ export default function Dashboard() {
                   className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors text-left ${
                     activeTab === tab.id
                       ? "bg-blue-900 text-white"
-                      : "text-slate-700 hover:bg-slate-100"
+                      : "text-muted-foreground hover:bg-muted"
                   }`}>
                   {tab.icon === "chat" && (
                     <svg
@@ -1395,7 +1400,7 @@ export default function Dashboard() {
           </div>
 
           {/* Tab Content Panel */}
-          <div className='bg-white rounded-lg border border-border/60 shadow-sm p-6'>
+          <div className='bg-card rounded-lg border border-border/60 shadow-sm p-6'>
             {renderPage()}
           </div>
         </div>

@@ -52,7 +52,7 @@ export function SummaryCard({ user, projection, peerComparison, summaryStats }: 
   return (
     <div className="summary-card mb-8">
       <div className="flex items-start gap-4 mb-6">
-        <div className="bg-white/20 p-4 rounded-xl">
+        <div className="bg-white/10 p-4 rounded-xl">
           <TrendingUp className="w-10 h-10 text-white" />
         </div>
         <div className="flex-1">

@@ -4,11 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Slider } from '@/components/ui/slider';
-import { Loader2, Calculator, ArrowLeft, Target, AlertCircle, Save, RotateCcw } from "lucide-react";
+import { Loader2, Calculator, Target, AlertCircle, Save, RotateCcw, LogOut, ArrowLeft } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { supabase } from "@/lib/supabase";
 import { UserProfile } from "@/lib/supabase";
 import { Switch } from "@/components/ui/switch";
+import { useTheme } from "@/contexts/ThemeContext";
+import { useAdminAuth } from "@/contexts/AdminAuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface CalculatorInputs {
   currentAge: number;
@@ -47,16 +50,19 @@ interface RetirementAnalysis {
 export default function RetirementCalculator() {
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
+  const { ThemeToggle } = useTheme();
+  const { adminUser, isAdminMode, logout: adminLogout } = useAdminAuth();
+  const { user, signOut } = useAuth();
+
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [includeInflation, setIncludeInflation] = useState(true);
   const [savedSnapshot, setSavedSnapshot] = useState<CalculatorInputs | null>(null);
 
-  // Calculator inputs derived from user profile
   const [calculatorInputs, setCalculatorInputs] = useState<CalculatorInputs>({
     currentAge: 30,
     retirementAge: 65,
-    currentBalance: 50000, // default in USD
+    currentBalance: 50000,
     monthlyContribution: 1000,
     employerContribution: 500,
     annualReturnRate: 7.5,
@@ -67,14 +73,12 @@ export default function RetirementCalculator() {
     contributionIncreaseRate: 2.0
   });
 
-  // Numeric parameters that will be used in calculation (quick editable)
   const [formulaParams, setFormulaParams] = useState({
-    withdrawalRate: 0.04, // 4% default
+    withdrawalRate: 0.04,
     yearsOfWithdrawal: 25,
     compoundingAnnualReturn: 0.07
   });
 
-  // Load user profile on component mount (useEffect instead of useMemo)
   useEffect(() => {
     const loadUserProfile = async () => {
       if (!userId) {
@@ -83,7 +87,6 @@ export default function RetirementCalculator() {
       }
 
       try {
-        // Try to load from Supabase first
         const { data, error } = await supabase
           .from('MUFG')
           .select('*')
@@ -92,8 +95,6 @@ export default function RetirementCalculator() {
 
         if (data && !error) {
           setUserProfile(data);
-
-          // Update calculator inputs from user profile (using flexible property names)
           const initialInputs = {
             currentAge: data.Age ?? 30,
             retirementAge: data.Retirement_Age_Goal ?? 65,
@@ -107,15 +108,11 @@ export default function RetirementCalculator() {
             salaryGrowthRate: 3.0,
             contributionIncreaseRate: 2.0
           };
-          
           setCalculatorInputs(initialInputs);
-          setSavedSnapshot(initialInputs); // Save initial state as snapshot
+          setSavedSnapshot(initialInputs);
         } else {
-          console.warn('User profile not found in Supabase, using default values');
-
           const storedUserData = localStorage.getItem(`user_${userId}`);
           let mockProfile: any;
-
           if (storedUserData) {
             const userData = JSON.parse(storedUserData);
             mockProfile = {
@@ -141,9 +138,7 @@ export default function RetirementCalculator() {
               Risk_Tolerance: 'Medium'
             };
           }
-
           setUserProfile(mockProfile);
-
           const initialInputs = {
             currentAge: mockProfile.Age,
             retirementAge: mockProfile.Retirement_Age_Goal,
@@ -157,9 +152,8 @@ export default function RetirementCalculator() {
             salaryGrowthRate: 3.0,
             contributionIncreaseRate: 2.0
           };
-          
           setCalculatorInputs(initialInputs);
-          setSavedSnapshot(initialInputs); // Save initial state as snapshot
+          setSavedSnapshot(initialInputs);
         }
       } catch (error) {
         console.error('Error loading user profile:', error);
@@ -172,6 +166,20 @@ export default function RetirementCalculator() {
     loadUserProfile();
   }, [userId, navigate]);
 
+  const handleSignOut = async () => {
+    if (isAdminMode) {
+      adminLogout();
+      navigate("/user-manager");
+    } else {
+      try {
+        localStorage.removeItem("currentUser");
+        localStorage.removeItem("userSession");
+      } catch (e) {}
+      await signOut?.();
+      navigate("/login");
+    }
+  };
+
   const handleCalculatorInputChange = (key: keyof CalculatorInputs, value: number) => {
     setCalculatorInputs(prev => ({ ...prev, [key]: value }));
   };
@@ -180,17 +188,9 @@ export default function RetirementCalculator() {
     setFormulaParams(prev => ({ ...prev, [key]: value }));
   };
 
-  const handleSaveSnapshot = () => {
-    setSavedSnapshot({...calculatorInputs});
-  };
+  const handleSaveSnapshot = () => setSavedSnapshot({ ...calculatorInputs });
+  const handleRevertToSnapshot = () => { if (savedSnapshot) setCalculatorInputs({ ...savedSnapshot }); };
 
-  const handleRevertToSnapshot = () => {
-    if (savedSnapshot) {
-      setCalculatorInputs({...savedSnapshot});
-    }
-  };
-
-  // Projection calculation (same approach as yours but uses INR amounts)
   const projectionData = useMemo(() => {
     const data: ProjectionData[] = [];
     const yearsToRetirement = calculatorInputs.retirementAge - calculatorInputs.currentAge;
@@ -202,80 +202,40 @@ export default function RetirementCalculator() {
     for (let i = 0; i <= yearsToRetirement; i++) {
       const age = calculatorInputs.currentAge + i;
       const year = new Date().getFullYear() + i;
-
       if (i > 0) {
         monthlyContrib *= (1 + calculatorInputs.contributionIncreaseRate / 100);
         employerContrib *= (1 + calculatorInputs.salaryGrowthRate / 100);
       }
-
       const annualContribution = (monthlyContrib + employerContrib) * 12;
       balance += annualContribution;
       totalContributions += annualContribution;
-
-      // Apply annual return rate
       const investmentReturn = balance * (calculatorInputs.annualReturnRate / 100);
       balance += investmentReturn;
-
       const investmentGrowth = balance - totalContributions;
-
-      // Apply tax
       const taxableGains = Math.max(0, investmentGrowth * 0.7);
       const tax = taxableGains * (calculatorInputs.taxRate / 100);
       const afterTaxBalance = balance - tax;
-
-      // Apply inflation if enabled
-      const inflationAdjustedBalance = includeInflation 
+      const inflationAdjustedBalance = includeInflation
         ? afterTaxBalance / Math.pow(1 + calculatorInputs.inflationRate / 100, i)
         : afterTaxBalance;
-
-      data.push({
-        age,
-        year,
-        balance: Math.round(balance),
-        totalContributions: Math.round(totalContributions),
-        investmentGrowth: Math.round(investmentGrowth),
-        afterTaxBalance: Math.round(afterTaxBalance),
-        inflationAdjustedBalance: Math.round(inflationAdjustedBalance)
-      });
+      data.push({ age, year, balance: Math.round(balance), totalContributions: Math.round(totalContributions), investmentGrowth: Math.round(investmentGrowth), afterTaxBalance: Math.round(afterTaxBalance), inflationAdjustedBalance: Math.round(inflationAdjustedBalance) });
     }
-
     return data;
   }, [calculatorInputs, includeInflation]);
 
   const retirementAnalysis = useMemo((): RetirementAnalysis => {
-    const finalProjection = projectionData[projectionData.length - 1] || {
-      afterTaxBalance: calculatorInputs.currentBalance,
-      totalContributions: calculatorInputs.currentBalance,
-      investmentGrowth: 0
-    };
-
+    const finalProjection = projectionData[projectionData.length - 1] || { afterTaxBalance: calculatorInputs.currentBalance, totalContributions: calculatorInputs.currentBalance, investmentGrowth: 0 };
     const projectedBalance = finalProjection.afterTaxBalance;
     const totalContributions = finalProjection.totalContributions;
     const investmentGrowth = finalProjection.investmentGrowth;
-
     const yearsOfWithdrawal = formulaParams.yearsOfWithdrawal;
     const totalRetirementNeeds = calculatorInputs.yearlyWithdrawal * yearsOfWithdrawal;
-
-    const inflationAdjustedNeeds = includeInflation
-      ? calculatorInputs.yearlyWithdrawal / Math.pow(1 + calculatorInputs.inflationRate / 100, calculatorInputs.retirementAge - calculatorInputs.currentAge)
-      : calculatorInputs.yearlyWithdrawal;
-
     const monthlyRetirementIncome = projectedBalance / yearsOfWithdrawal / 12;
     const inflationAdjustedIncome = includeInflation
       ? monthlyRetirementIncome / Math.pow(1 + calculatorInputs.inflationRate / 100, calculatorInputs.retirementAge - calculatorInputs.currentAge)
       : monthlyRetirementIncome;
-
     const shortfall = Math.max(0, totalRetirementNeeds - projectedBalance);
-
-    return {
-      projectedBalance,
-      totalContributions,
-      investmentGrowth,
-      yearsOfWithdrawal,
-      monthlyRetirementIncome,
-      inflationAdjustedIncome,
-      shortfall
-    };
+    return { projectedBalance, totalContributions, investmentGrowth, yearsOfWithdrawal, monthlyRetirementIncome, inflationAdjustedIncome, shortfall };
   }, [projectionData, calculatorInputs, formulaParams, includeInflation]);
 
   const balanceBreakdown = [
@@ -283,30 +243,24 @@ export default function RetirementCalculator() {
     { name: 'Investment Growth', value: retirementAnalysis.investmentGrowth, color: '#10b981' },
   ];
 
-  // Currency formatting: USD
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(amount);
-  };
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount);
 
   const formatPercent = (value: number) => `${value}%`;
 
-  // Example computed values from editable formulas (uses numeric params where relevant)
   const requiredNestEggFrom4pc = Math.round(calculatorInputs.yearlyWithdrawal / formulaParams.withdrawalRate);
   const monthlyWithdrawalExample = Math.round((calculatorInputs.currentBalance * formulaParams.withdrawalRate) / 12);
 
+  const inputClass = "w-full bg-white dark:bg-slate-950 text-zinc-900 dark:text-white border border-border rounded-lg p-3 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition";
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-sky-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <Card className="w-full max-w-lg">
           <CardContent className="pt-6 text-center">
-            <Loader2 className="w-14 h-14 text-emerald-500 mx-auto mb-4 animate-spin" />
-            <h2 className="text-2xl font-bold text-gray-700 mb-2">Loading Your Retirement Calculator</h2>
-            <p className="text-gray-600">We are preparing a personalized projection for you — hold tight (should be quick).</p>
+            <Loader2 className="w-14 h-14 text-success mx-auto mb-4 animate-spin" />
+            <h2 className="text-2xl font-bold text-foreground mb-2">Loading Your Retirement Calculator</h2>
+            <p className="text-muted-foreground">Preparing a personalized projection — hold tight.</p>
           </CardContent>
         </Card>
       </div>
@@ -315,16 +269,14 @@ export default function RetirementCalculator() {
 
   if (!userProfile) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-rose-50 to-pink-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardContent className="pt-6">
             <div className="text-center">
-              <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-              <h2 className="text-2xl font-bold text-red-700 mb-2">Profile Not Found</h2>
-              <p className="text-gray-600 mb-4">We couldn't find your profile. Please try again.</p>
-              <Button onClick={() => navigate('/dashboard')}>
-                Back to Dashboard
-              </Button>
+              <AlertCircle className="w-16 h-16 text-destructive mx-auto mb-4" />
+              <h2 className="text-2xl font-bold text-foreground mb-2">Profile Not Found</h2>
+              <p className="text-muted-foreground mb-4">We couldn't find your profile. Please try again.</p>
+              <Button onClick={() => navigate('/dashboard')}>Back to Dashboard</Button>
             </div>
           </CardContent>
         </Card>
@@ -333,32 +285,71 @@ export default function RetirementCalculator() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-white p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <Button onClick={() => navigate('/dashboard')} variant="outline" className="flex items-center gap-2">
-              <ArrowLeft className="w-4 h-4" />
-              Back to Dashboard
-            </Button>
-            <div>
-              <h1 className="text-3xl md:text-4xl font-bold text-slate-900">Retirement Calculator</h1>
-              <p className="text-sm text-slate-600">Personalized projections for <span className="font-medium">{userProfile.Name ?? 'User'}</span></p>
+    <div className="min-h-screen bg-background text-foreground">
+
+      {/* ── Sticky Header — exact match to Dashboard ── */}
+      <header className="sticky top-0 z-50 border-b border-border/40 bg-card/95 backdrop-blur-sm">
+        <div className="mx-auto max-w-7xl px-6 h-14 flex items-center justify-between">
+          {/* Left: Logo */}
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-blue-900 rounded-md flex items-center justify-center">
+              <span className="text-white text-sm font-bold">FA</span>
             </div>
+            <span className="text-sm font-semibold text-foreground">SuperWise</span>
+          </div>
+
+          {/* Right: actions */}
+          <div className="flex items-center gap-2">
+            {/* Back to Dashboard */}
+            <Button onClick={() => navigate('/dashboard')} variant="outline" size="sm">
+              <ArrowLeft className="w-3 h-3 mr-1" />
+              Dashboard
+            </Button>
+
+            {/* Back to User Manager (admin only) */}
+            {isAdminMode && (
+              <Button onClick={() => navigate('/user-manager')} variant="outline" size="sm">
+                <ArrowLeft className="w-3 h-3 mr-1" />
+                Back
+              </Button>
+            )}
+
+            <div className="hidden sm:flex items-center rounded-full px-1">
+              <ThemeToggle />
+            </div>
+
+            <Button onClick={handleSignOut} variant="outline" size="sm">
+              <LogOut className="w-3 h-3 mr-1" />
+              Sign Out
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      {/* ── Page content ── */}
+      <main className="mx-auto max-w-7xl px-6 py-6 space-y-6">
+
+        {/* Page title row */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl md:text-4xl font-bold text-foreground">Retirement Calculator</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Personalized projections for <span className="font-medium">{userProfile.Name ?? 'User'}</span>
+            </p>
           </div>
 
           <div className="flex items-center gap-4">
-            <div className="text-right">
-              <div className="text-xs text-slate-500">Projected balance</div>
-              <div className="text-lg font-semibold text-emerald-600">{formatCurrency(retirementAnalysis.projectedBalance)}</div>
+            <div className="text-right hidden sm:block">
+              <div className="text-xs text-muted-foreground">Projected balance</div>
+              <div className="text-lg font-semibold text-success">{formatCurrency(retirementAnalysis.projectedBalance)}</div>
             </div>
             <div className="flex gap-2">
-              <Button onClick={handleSaveSnapshot} variant="outline" className="flex items-center gap-2">
+              <Button onClick={handleSaveSnapshot} variant="outline" size="sm" className="flex items-center gap-2">
                 <Save className="w-4 h-4" />
-                Save Snapshot
+                Save
               </Button>
               {savedSnapshot && (
-                <Button onClick={handleRevertToSnapshot} variant="outline" className="flex items-center gap-2">
+                <Button onClick={handleRevertToSnapshot} variant="outline" size="sm" className="flex items-center gap-2">
                   <RotateCcw className="w-4 h-4" />
                   Revert
                 </Button>
@@ -367,8 +358,10 @@ export default function RetirementCalculator() {
           </div>
         </div>
 
+        {/* ── 3-column grid ── */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* LEFT: Inputs & scenario */}
+
+          {/* LEFT: Inputs */}
           <div className="lg:col-span-1 space-y-4">
             <Card>
               <CardHeader>
@@ -381,11 +374,7 @@ export default function RetirementCalculator() {
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="inflation-toggle">Include Inflation</Label>
-                  <Switch
-                    id="inflation-toggle"
-                    checked={includeInflation}
-                    onCheckedChange={setIncludeInflation}
-                  />
+                  <Switch id="inflation-toggle" checked={includeInflation} onCheckedChange={setIncludeInflation} />
                 </div>
 
                 <div>
@@ -401,19 +390,19 @@ export default function RetirementCalculator() {
                 <div>
                   <Label>Current Savings: {formatCurrency(calculatorInputs.currentBalance)}</Label>
                   <div className="flex items-center gap-2 mt-2">
-                    <input type="number" value={calculatorInputs.currentBalance} onChange={(e) => handleCalculatorInputChange('currentBalance', Number(e.target.value || 0))} className="w-full input input-bordered p-2" />
-                    <Button onClick={() => handleCalculatorInputChange('currentBalance', Math.round(calculatorInputs.currentBalance * 1.1))}>+10%</Button>
+                    <input type="number" value={calculatorInputs.currentBalance} onChange={(e) => handleCalculatorInputChange('currentBalance', Number(e.target.value || 0))} className={inputClass} />
+                    <Button size="sm" onClick={() => handleCalculatorInputChange('currentBalance', Math.round(calculatorInputs.currentBalance * 1.1))}>+10%</Button>
                   </div>
                 </div>
 
                 <div>
                   <Label>Monthly Contribution: {formatCurrency(calculatorInputs.monthlyContribution)}</Label>
-                  <input type="number" value={calculatorInputs.monthlyContribution} onChange={(e) => handleCalculatorInputChange('monthlyContribution', Number(e.target.value || 0))} className="w-full input input-bordered p-2 mt-2" />
+                  <input type="number" value={calculatorInputs.monthlyContribution} onChange={(e) => handleCalculatorInputChange('monthlyContribution', Number(e.target.value || 0))} className={`${inputClass} mt-2`} />
                 </div>
 
                 <div>
                   <Label>Employer Contribution (monthly): {formatCurrency(calculatorInputs.employerContribution)}</Label>
-                  <input type="number" value={calculatorInputs.employerContribution} onChange={(e) => handleCalculatorInputChange('employerContribution', Number(e.target.value || 0))} className="w-full input input-bordered p-2 mt-2" />
+                  <input type="number" value={calculatorInputs.employerContribution} onChange={(e) => handleCalculatorInputChange('employerContribution', Number(e.target.value || 0))} className={`${inputClass} mt-2`} />
                 </div>
 
                 <div>
@@ -438,14 +427,12 @@ export default function RetirementCalculator() {
               <CardContent className="space-y-3">
                 <div>
                   <Label>Annual Retirement Income Needed: {formatCurrency(calculatorInputs.yearlyWithdrawal)}</Label>
-                  <input type="number" value={calculatorInputs.yearlyWithdrawal} onChange={(e) => handleCalculatorInputChange('yearlyWithdrawal', Number(e.target.value || 0))} className="w-full input input-bordered p-2 mt-2" />
+                  <input type="number" value={calculatorInputs.yearlyWithdrawal} onChange={(e) => handleCalculatorInputChange('yearlyWithdrawal', Number(e.target.value || 0))} className={`${inputClass} mt-2`} />
                 </div>
-
                 <div>
-                  <Label>Tax Rate (in retirement assumed): {calculatorInputs.taxRate}%</Label>
+                  <Label>Tax Rate (in retirement): {calculatorInputs.taxRate}%</Label>
                   <Slider value={[calculatorInputs.taxRate]} onValueChange={([v]) => handleCalculatorInputChange('taxRate', v)} min={0} max={50} step={1} className="mt-2" />
                 </div>
-
                 <div>
                   <Label>Contribution Increase Rate (annual): {calculatorInputs.contributionIncreaseRate}%</Label>
                   <Slider value={[calculatorInputs.contributionIncreaseRate]} onValueChange={([v]) => handleCalculatorInputChange('contributionIncreaseRate', v)} min={0} max={10} step={0.25} className="mt-2" />
@@ -454,7 +441,7 @@ export default function RetirementCalculator() {
             </Card>
           </div>
 
-          {/* CENTER: Charts & projection */}
+          {/* CENTER/RIGHT: Charts */}
           <div className="lg:col-span-2 space-y-6">
             <Card>
               <CardHeader>
@@ -465,13 +452,13 @@ export default function RetirementCalculator() {
                 <div style={{ width: '100%', height: 380 }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={projectionData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="age" label={{ value: 'Age', position: 'insideBottomRight', offset: -5 }} />
-                      <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}K`} />
-                      <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                      <Legend />
-                      <Line type="monotone" dataKey={includeInflation ? "inflationAdjustedBalance" : "afterTaxBalance"} stroke="#10b981" strokeWidth={3} name={includeInflation ? "Inflation-Adjusted Balance" : "Projected Balance"} dot={false} />
-                      <Line type="monotone" dataKey="totalContributions" stroke="#3b82f6" strokeWidth={2} name="Total Contributions" dot={false} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.35)" />
+                      <XAxis dataKey="age" stroke="#94a3b8" tick={{ fill: '#cbd5e1', fontSize: 12 }} label={{ value: 'Age', position: 'insideBottomRight', offset: -5, fill: '#cbd5e1' }} />
+                      <YAxis stroke="#94a3b8" tick={{ fill: '#cbd5e1', fontSize: 12 }} tickFormatter={(value) => `$${(value / 1000).toFixed(0)}K`} />
+                      <Tooltip formatter={(value) => formatCurrency(Number(value))} contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.95)', borderColor: 'rgba(148, 163, 184, 0.3)' }} labelStyle={{ color: '#e2e8f0' }} itemStyle={{ color: '#e2e8f0' }} />
+                      <Legend wrapperStyle={{ color: '#cbd5e1' }} />
+                      <Line type="monotone" dataKey={includeInflation ? "inflationAdjustedBalance" : "afterTaxBalance"} stroke="#34d399" strokeWidth={3} name={includeInflation ? "Inflation-Adjusted Balance" : "Projected Balance"} dot={false} />
+                      <Line type="monotone" dataKey="totalContributions" stroke="#60a5fa" strokeWidth={2} name="Total Contributions" dot={false} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -480,9 +467,7 @@ export default function RetirementCalculator() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card>
-                <CardHeader>
-                  <CardTitle>Balance Composition</CardTitle>
-                </CardHeader>
+                <CardHeader><CardTitle>Balance Composition</CardTitle></CardHeader>
                 <CardContent>
                   <div style={{ width: '100%', height: 260 }}>
                     <ResponsiveContainer width="100%" height="100%">
@@ -499,30 +484,27 @@ export default function RetirementCalculator() {
               </Card>
 
               <Card>
-                <CardHeader>
-                  <CardTitle>Projection Snapshot</CardTitle>
-                </CardHeader>
+                <CardHeader><CardTitle>Projection Snapshot</CardTitle></CardHeader>
                 <CardContent>
                   <div className="space-y-3">
                     <div className="flex justify-between">
-                      <span className="text-sm text-slate-600">Years to Retirement</span>
+                      <span className="text-sm text-muted-foreground">Years to Retirement</span>
                       <span className="font-medium">{calculatorInputs.retirementAge - calculatorInputs.currentAge} years</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-sm text-slate-600">Projected Balance</span>
-                      <span className="font-medium text-emerald-600">{formatCurrency(retirementAnalysis.projectedBalance)}</span>
+                      <span className="text-sm text-muted-foreground">Projected Balance</span>
+                      <span className="font-medium text-success">{formatCurrency(retirementAnalysis.projectedBalance)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-sm text-slate-600">Monthly Income (est.)</span>
-                      <span className="font-medium text-blue-600">{formatCurrency(includeInflation ? retirementAnalysis.inflationAdjustedIncome : retirementAnalysis.monthlyRetirementIncome)}</span>
+                      <span className="text-sm text-muted-foreground">Monthly Income (est.)</span>
+                      <span className="font-medium text-primary">{formatCurrency(includeInflation ? retirementAnalysis.inflationAdjustedIncome : retirementAnalysis.monthlyRetirementIncome)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-sm text-slate-600">Shortfall / Surplus</span>
+                      <span className="text-sm text-muted-foreground">Shortfall / Surplus</span>
                       <span className={`font-medium ${retirementAnalysis.shortfall > 0 ? 'text-red-600' : 'text-green-600'}`}>
                         {retirementAnalysis.shortfall > 0 ? '-' : '+'}{formatCurrency(Math.abs(retirementAnalysis.shortfall))}
                       </span>
                     </div>
-
                     <div className="mt-3">
                       <Button onClick={() => window.print()}>Export / Print</Button>
                     </div>
@@ -531,6 +513,7 @@ export default function RetirementCalculator() {
               </Card>
             </div>
 
+            {/* Recommendations */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -540,20 +523,24 @@ export default function RetirementCalculator() {
               </CardHeader>
               <CardContent>
                 {retirementAnalysis.shortfall > 0 ? (
-                  <div className="bg-red-50 border border-red-100 rounded-lg p-4">
-                    <h4 className="font-semibold text-red-800 mb-2">Action Required</h4>
-                    <p className="text-sm text-red-700 mb-3">You have a projected shortfall of {formatCurrency(retirementAnalysis.shortfall)}. Try these:</p>
-                    <ul className="list-disc list-inside text-sm text-red-700">
+                  <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                    <h4 className="font-semibold text-red-700 dark:text-red-400 mb-2">Action Required</h4>
+                    <p className="text-sm text-red-700 dark:text-red-300 mb-3">
+                      You have a projected shortfall of {formatCurrency(retirementAnalysis.shortfall)}. Try these:
+                    </p>
+                    <ul className="list-disc list-inside text-sm text-red-700 dark:text-red-300 space-y-1">
                       <li>Increase monthly contribution by {formatCurrency(Math.round(retirementAnalysis.shortfall / ((calculatorInputs.retirementAge - calculatorInputs.currentAge) * 12)))}</li>
                       <li>Delay retirement age by 2–3 years</li>
-                      <li>Consider a small increase in risk tolerance to improve expected return (careful — risk may vary)</li>
+                      <li>Consider a small increase in risk tolerance to improve expected return</li>
                     </ul>
                   </div>
                 ) : (
-                  <div className="bg-emerald-50 border border-emerald-100 rounded-lg p-4">
-                    <h4 className="font-semibold text-emerald-800 mb-2">On Track</h4>
-                    <p className="text-sm text-emerald-700 mb-3">You're projected to meet your retirement need with current assumptions. Consider optimizations:</p>
-                    <ul className="list-disc list-inside text-sm text-emerald-700">
+                  <div className="bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                    <h4 className="font-semibold text-green-700 dark:text-green-400 mb-2">On Track</h4>
+                    <p className="text-sm text-green-700 dark:text-green-300 mb-3">
+                      You're projected to meet your retirement need with current assumptions. Consider optimizations:
+                    </p>
+                    <ul className="list-disc list-inside text-sm text-green-700 dark:text-green-300 space-y-1">
                       <li>Review asset allocation annually</li>
                       <li>Tax-efficient withdrawal strategy</li>
                       <li>Regularly increase contributions with income</li>
@@ -565,7 +552,7 @@ export default function RetirementCalculator() {
           </div>
         </div>
 
-        {/* FORMULAS PANEL */}
+        {/* Formulas panel */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <Card className="lg:col-span-2">
             <CardHeader>
@@ -576,77 +563,61 @@ export default function RetirementCalculator() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <Label>Withdrawal Rate (%)</Label>
-                  <input type="number" step={0.1} min={1} max={10} value={formulaParams.withdrawalRate * 100} onChange={(e) => handleFormulaParamChange('withdrawalRate', Number(e.target.value || 0) / 100)} className="w-full input input-bordered p-2" />
-                  <div className="text-xs text-slate-500 mt-1">Percentage of savings withdrawn annually in retirement</div>
+                  <input type="number" step={0.1} min={1} max={10} value={formulaParams.withdrawalRate * 100} onChange={(e) => handleFormulaParamChange('withdrawalRate', Number(e.target.value || 0) / 100)} className={`${inputClass} mt-1`} />
+                  <div className="text-xs text-muted-foreground mt-1">Percentage of savings withdrawn annually</div>
                 </div>
-
                 <div>
                   <Label>Years of Withdrawal</Label>
-                  <input type="number" min={5} max={60} value={formulaParams.yearsOfWithdrawal} onChange={(e) => handleFormulaParamChange('yearsOfWithdrawal', Number(e.target.value || 0))} className="w-full input input-bordered p-2" />
-                  <div className="text-xs text-slate-500 mt-1">Expected duration of retirement</div>
+                  <input type="number" min={5} max={60} value={formulaParams.yearsOfWithdrawal} onChange={(e) => handleFormulaParamChange('yearsOfWithdrawal', Number(e.target.value || 0))} className={`${inputClass} mt-1`} />
+                  <div className="text-xs text-muted-foreground mt-1">Expected duration of retirement</div>
                 </div>
-
                 <div>
                   <Label>Compounding Return (%)</Label>
-                  <input type="number" step={0.1} min={0} max={20} value={formulaParams.compoundingAnnualReturn * 100} onChange={(e) => handleFormulaParamChange('compoundingAnnualReturn', Number(e.target.value || 0) / 100)} className="w-full input input-bordered p-2" />
-                  <div className="text-xs text-slate-500 mt-1">Used in accumulation calculations</div>
+                  <input type="number" step={0.1} min={0} max={20} value={formulaParams.compoundingAnnualReturn * 100} onChange={(e) => handleFormulaParamChange('compoundingAnnualReturn', Number(e.target.value || 0) / 100)} className={`${inputClass} mt-1`} />
+                  <div className="text-xs text-muted-foreground mt-1">Used in accumulation calculations</div>
                 </div>
               </div>
 
-              <div className="bg-slate-50 p-4 rounded-md">
+              <div className="bg-muted/50 dark:bg-muted/70 p-4 rounded-md">
                 <h4 className="font-semibold mb-2">Example Calculations</h4>
                 <div className="text-sm space-y-2">
                   <div>
-                    <strong>Required Nest Egg:</strong> Annual Expenses / Withdrawal Rate = {formatCurrency(calculatorInputs.yearlyWithdrawal)} / {formulaParams.withdrawalRate * 100}% = <span className="font-medium">{formatCurrency(requiredNestEggFrom4pc)}</span>
+                    <strong>Required Nest Egg:</strong> {formatCurrency(calculatorInputs.yearlyWithdrawal)} / {formulaParams.withdrawalRate * 100}% = <span className="font-medium">{formatCurrency(requiredNestEggFrom4pc)}</span>
                   </div>
                   <div>
-                    <strong>Monthly Withdrawal from Current Savings:</strong> (Current Savings × Withdrawal Rate) / 12 = ({formatCurrency(calculatorInputs.currentBalance)} × {formulaParams.withdrawalRate * 100}%) / 12 = <span className="font-medium">{formatCurrency(monthlyWithdrawalExample)}</span>
+                    <strong>Monthly Withdrawal from Current Savings:</strong> ({formatCurrency(calculatorInputs.currentBalance)} × {formulaParams.withdrawalRate * 100}%) / 12 = <span className="font-medium">{formatCurrency(monthlyWithdrawalExample)}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
-                <Button onClick={() => {
-                  setFormulaParams({
-                    withdrawalRate: 0.04,
-                    yearsOfWithdrawal: 25,
-                    compoundingAnnualReturn: 0.07
-                  });
-                }}>Reset to defaults</Button>
-              </div>
+              <Button onClick={() => setFormulaParams({ withdrawalRate: 0.04, yearsOfWithdrawal: 25, compoundingAnnualReturn: 0.07 })}>
+                Reset to defaults
+              </Button>
             </CardContent>
           </Card>
 
-          {/* RIGHT: Compact summary & action */}
           <Card>
-            <CardHeader>
-              <CardTitle>Quick Summary</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle>Quick Summary</CardTitle></CardHeader>
             <CardContent>
               <div className="space-y-3">
                 <div className="flex justify-between">
-                  <span className="text-slate-600">Projected Balance</span>
+                  <span className="text-muted-foreground">Projected Balance</span>
                   <span className="font-semibold">{formatCurrency(retirementAnalysis.projectedBalance)}</span>
                 </div>
-
                 <div className="flex justify-between">
-                  <span className="text-slate-600">Total Contributions</span>
+                  <span className="text-muted-foreground">Total Contributions</span>
                   <span className="font-semibold">{formatCurrency(retirementAnalysis.totalContributions)}</span>
                 </div>
-
                 <div className="flex justify-between">
-                  <span className="text-slate-600">Investment Growth</span>
-                  <span className="font-semibold text-emerald-600">{formatCurrency(retirementAnalysis.investmentGrowth)}</span>
+                  <span className="text-muted-foreground">Investment Growth</span>
+                  <span className="font-semibold text-success">{formatCurrency(retirementAnalysis.investmentGrowth)}</span>
                 </div>
-
                 <div className="flex justify-between">
-                  <span className="text-slate-600">Monthly Income (est.)</span>
-                  <span className="font-semibold text-blue-600">{formatCurrency(includeInflation ? retirementAnalysis.inflationAdjustedIncome : retirementAnalysis.monthlyRetirementIncome)}</span>
+                  <span className="text-muted-foreground">Monthly Income (est.)</span>
+                  <span className="font-semibold text-primary">{formatCurrency(includeInflation ? retirementAnalysis.inflationAdjustedIncome : retirementAnalysis.monthlyRetirementIncome)}</span>
                 </div>
-
                 <div className="pt-3">
                   <Button onClick={() => {
-                    // simple "apply recommendation" action: increase monthly contribution to remove shortfall (if any)
                     if (retirementAnalysis.shortfall > 0) {
                       const yearsLeft = Math.max(1, calculatorInputs.retirementAge - calculatorInputs.currentAge);
                       const extraMonthly = Math.ceil(retirementAnalysis.shortfall / (yearsLeft * 12));
@@ -662,7 +633,7 @@ export default function RetirementCalculator() {
             </CardContent>
           </Card>
         </div>
-      </div>
+      </main>
     </div>
   );
 }
