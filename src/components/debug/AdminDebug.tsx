@@ -8,10 +8,10 @@ export function AdminDebug() {
   return (
     <div className="fixed bottom-4 right-4 bg-black bg-opacity-80 text-white p-4 rounded-lg text-xs">
       <div><strong>Debug Info:</strong></div>
-      <div>Regular User: {user ? user.id : 'None'}</div>
+      <div>Regular User: {user ? user.User_ID : 'None'}</div>
       <div>Admin Mode: {isAdminMode ? 'Yes' : 'No'}</div>
-      <div>Admin User: {adminUser ? adminUser.id : 'None'}</div>
-      <div>Admin User Name: {adminUser ? adminUser.name : 'None'}</div>
+      <div>Admin User: {adminUser ? adminUser.User_ID : 'None'}</div>
+      <div>Admin User Name: {adminUser ? adminUser.Name : 'None'}</div>
     </div>
   );
 }

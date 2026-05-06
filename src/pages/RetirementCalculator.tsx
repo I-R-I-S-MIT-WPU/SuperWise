@@ -343,7 +343,7 @@ export default function RetirementCalculator() {
             </Button>
             <div>
               <h1 className="text-3xl md:text-4xl font-bold text-slate-900">Retirement Calculator</h1>
-              <p className="text-sm text-slate-600">Personalized projections for <span className="font-medium">{userProfile.Name ?? userProfile.name ?? 'User'}</span></p>
+              <p className="text-sm text-slate-600">Personalized projections for <span className="font-medium">{userProfile.Name ?? 'User'}</span></p>
             </div>
           </div>
 

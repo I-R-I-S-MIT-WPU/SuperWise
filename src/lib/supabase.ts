@@ -51,6 +51,8 @@ export interface UserProfile {
   Tax_Benefits_Eligibility?: string
   Government_Pension_Eligibility?: string
   Private_Pension_Eligibility?: string
+  Anomaly_Score?: number
+  anomaly_score?: number
   Account_Age?: number
   Risk_Tolerance_encoded?: number
   Investment_Type_encoded?: number

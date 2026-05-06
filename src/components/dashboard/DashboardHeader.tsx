@@ -2,7 +2,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { UserProfile } from "@/services/dataService";
+import { UserProfile } from "@/lib/supabase";
 import { Mail, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -68,30 +68,30 @@ export function DashboardHeader({ user, goalProgress }: DashboardHeaderProps) {
       <div className="flex flex-col lg:flex-row items-start lg:items-center gap-6">
         <div className="flex items-center gap-6">
           <Avatar className="w-20 h-20 lg:w-24 lg:h-24">
-            <AvatarImage src="" alt={user.User_ID || user.id || 'User'} />
+            <AvatarImage src="" alt={user.User_ID || user.Name || 'User'} />
             <AvatarFallback className="text-2xl lg:text-3xl font-bold bg-primary text-primary-foreground">
-              {user.User_ID ? user.User_ID.slice(-2) : (user.id ? user.id.slice(-2) : 'U')}
+              {user.User_ID ? user.User_ID.slice(-2) : 'U'}
             </AvatarFallback>
           </Avatar>
           <div>
             <h1 className="text-3xl lg:text-4xl font-bold text-card-foreground mb-3">
-              Welcome back, {user.Name || user.name || user.User_ID || user.id || 'User'}
+              Welcome back, {user.Name || user.User_ID || 'User'}
             </h1>
             <div className="flex flex-wrap items-center gap-3">
               <Badge variant="outline" className="text-lg py-2 px-4 font-medium">
-                Age {user.Age || user.age || 'N/A'}
+                Age {user.Age ?? 'N/A'}
               </Badge>
               <Badge variant="outline" className="text-lg py-2 px-4 font-medium">
-                {user.Marital_Status || user.marital_status || 'N/A'}
+                {user.Marital_Status || 'N/A'}
               </Badge>
               <Badge variant="outline" className="text-lg py-2 px-4 font-medium">
-                {user.Number_of_Dependents || user.number_of_dependents || 0} {(user.Number_of_Dependents || user.number_of_dependents || 0) === 1 ? 'Dependent' : 'Dependents'}
+                {user.Number_of_Dependents ?? 0} {(user.Number_of_Dependents ?? 0) === 1 ? 'Dependent' : 'Dependents'}
               </Badge>
               <Badge 
                 variant="outline" 
-                className={`text-lg py-2 px-4 font-medium ${getRiskColor(user.Risk_Tolerance || user.risk_tolerance || 'Medium')}`}
+                className={`text-lg py-2 px-4 font-medium ${getRiskColor(user.Risk_Tolerance || 'Medium')}`} 
               >
-                {user.Risk_Tolerance || user.risk_tolerance || 'Medium'} Risk
+                {user.Risk_Tolerance || 'Medium'} Risk
               </Badge>
             </div>
           </div>

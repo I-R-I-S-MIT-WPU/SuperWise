@@ -72,6 +72,8 @@ export function SignupForm({ onSignupSuccess, onCancel }: SignupFormProps) {
   const GEMINI_API_KEY = 'AIzaSyDBVO_5h4L6j2-M1q-1PecgC42sFQYWv0w';
   const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
+  const { toast } = useToast();
+
   // Define conversation steps
   const conversationSteps: ConversationStep[] = [
     {

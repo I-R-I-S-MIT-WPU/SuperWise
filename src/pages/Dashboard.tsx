@@ -256,7 +256,10 @@ export default function Dashboard() {
         "Admin user Contribution_Amount:",
         adminUser.Contribution_Amount,
       );
-      console.log("Admin user Anomaly_Score:", adminUser.Anomaly_Score);
+      console.log(
+        "Admin user anomaly score:",
+        adminUser.Anomaly_Score ?? adminUser.anomaly_score ?? 0,
+      );
       setCurrentUser(adminUser);
 
       // Get real projection data from ML API for admin user
@@ -378,7 +381,7 @@ export default function Dashboard() {
 
         if (peerData.success) {
           // Convert common_investment_types to investment_types format expected by SummaryCard
-          const investmentTypes = {};
+          const investmentTypes: Record<string, { count: number; percentage: number }> = {};
           const peerStats = peerData.data.peer_stats || {};
 
           console.log("Admin Peer data received:", peerData);
@@ -388,16 +391,16 @@ export default function Dashboard() {
             peerStats.common_investment_types,
           );
 
-          if (peerStats.common_investment_types) {
+          const commonInvestmentTypes = peerStats.common_investment_types as Record<string, number> | undefined;
+          if (commonInvestmentTypes) {
             const totalPeers = peerStats.total_peers || 1;
-            Object.entries(peerStats.common_investment_types).forEach(
-              ([type, count]) => {
-                investmentTypes[type] = {
-                  count: count,
-                  percentage: Math.round((count / totalPeers) * 100),
-                };
-              },
-            );
+            Object.entries(commonInvestmentTypes).forEach(([type, count]) => {
+              const countValue = Number(count) || 0;
+              investmentTypes[type] = {
+                count: countValue,
+                percentage: Math.round((countValue / totalPeers) * 100),
+              };
+            });
           }
 
           console.log("Admin Processed investment types:", investmentTypes);
@@ -589,16 +592,16 @@ export default function Dashboard() {
                 peerStats.common_investment_types,
               );
 
-              if (peerStats.common_investment_types) {
+              const commonInvestmentTypes = peerStats.common_investment_types as Record<string, number> | undefined;
+              if (commonInvestmentTypes) {
                 const totalPeers = peerStats.total_peers || 1;
-                Object.entries(peerStats.common_investment_types).forEach(
-                  ([type, count]) => {
-                    investmentTypes[type] = {
-                      count: count,
-                      percentage: Math.round((count / totalPeers) * 100),
-                    };
-                  },
-                );
+                Object.entries(commonInvestmentTypes).forEach(([type, count]) => {
+                  const countValue = Number(count) || 0;
+                  investmentTypes[type] = {
+                    count: countValue,
+                    percentage: Math.round((countValue / totalPeers) * 100),
+                  };
+                });
               }
 
               console.log("Processed investment types:", investmentTypes);
