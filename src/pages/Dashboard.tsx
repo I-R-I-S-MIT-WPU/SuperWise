@@ -272,14 +272,10 @@ export default function Dashboard() {
         const projectionData = await projectionResponse.json();
 
         if (projectionData.success) {
-          // Calculate monthly increase needed
-          // The user wants to reach their Projected_Pension_Amount goal
-          // The ML model predicts they'll have adjusted_projection with current contributions
-          // We need to calculate how much more they need to contribute monthly to reach their goal
           const retirementGoal =
-            adminUser.Projected_Pension_Amount || adminUser.Current_Savings * 5; // What they want to have
-          const projectedAmount = projectionData.data.adjusted_projection; // What they'll actually have with current contributions
-          const currentSavings = adminUser.Current_Savings; // What they have now
+            adminUser.Projected_Pension_Amount || adminUser.Current_Savings * 5;
+          const projectedAmount = projectionData.data.adjusted_projection;
+          const currentSavings = adminUser.Current_Savings;
           const yearsToRetirement =
             projectionData.data.years_to_retirement || 35;
 
@@ -295,9 +291,6 @@ export default function Dashboard() {
             isExceedingGoal: projectedAmount > retirementGoal,
           });
 
-          // Calculate how much more they need to contribute monthly to reach their goal
-          // If they're already exceeding their goal, show 0
-          // If they're short, calculate the monthly increase needed
           const monthlyIncreaseNeeded = Math.max(
             0,
             (retirementGoal - projectedAmount) / (yearsToRetirement * 12),
@@ -313,7 +306,7 @@ export default function Dashboard() {
 
           setProjection({
             ...projectionData.data,
-            monthly_increase_needed: Number(monthlyIncreaseNeeded), // Ensure it's a native JavaScript number
+            monthly_increase_needed: Number(monthlyIncreaseNeeded),
           });
           setSummaryStats({
             current_savings: adminUser.Current_Savings,
@@ -347,7 +340,7 @@ export default function Dashboard() {
             current_projection: adminUser.Current_Savings * 5,
             adjusted_projection: targetAmount,
             monthly_income_at_retirement: targetAmount / 12,
-            monthly_increase_needed: Number(monthlyIncreaseNeeded), // Ensure it's a native JavaScript number
+            monthly_increase_needed: Number(monthlyIncreaseNeeded),
           });
         }
       } catch (error) {
@@ -370,7 +363,7 @@ export default function Dashboard() {
           current_projection: adminUser.Current_Savings * 5,
           adjusted_projection: targetAmount,
           monthly_income_at_retirement: targetAmount / 12,
-          monthly_increase_needed: Number(monthlyIncreaseNeeded), // Ensure it's a native JavaScript number
+          monthly_increase_needed: Number(monthlyIncreaseNeeded),
         });
       }
 
@@ -382,7 +375,6 @@ export default function Dashboard() {
         const peerData = await peerResponse.json();
 
         if (peerData.success) {
-          // Convert common_investment_types to investment_types format expected by SummaryCard
           const investmentTypes: Record<string, { count: number; percentage: number }> = {};
           const peerStats = peerData.data.peer_stats || {};
 
@@ -472,15 +464,11 @@ export default function Dashboard() {
             const projectionData = await projectionResponse.json();
 
             if (projectionData.success) {
-              // Calculate monthly increase needed
-              // The user wants to reach their Projected_Pension_Amount goal
-              // The ML model predicts they'll have adjusted_projection with current contributions
-              // We need to calculate how much more they need to contribute monthly to reach their goal
               const retirementGoal =
                 userProfile.Projected_Pension_Amount ||
-                userProfile.Current_Savings * 5; // What they want to have
-              const projectedAmount = projectionData.data.adjusted_projection; // What they'll actually have with current contributions
-              const currentSavings = userProfile.Current_Savings; // What they have now
+                userProfile.Current_Savings * 5;
+              const projectedAmount = projectionData.data.adjusted_projection;
+              const currentSavings = userProfile.Current_Savings;
               const yearsToRetirement =
                 projectionData.data.years_to_retirement || 35;
 
@@ -496,9 +484,6 @@ export default function Dashboard() {
                 isExceedingGoal: projectedAmount > retirementGoal,
               });
 
-              // Calculate how much more they need to contribute monthly to reach their goal
-              // If they're already exceeding their goal, show 0
-              // If they're short, calculate the monthly increase needed
               const monthlyIncreaseNeeded = Math.max(
                 0,
                 (retirementGoal - projectedAmount) / (yearsToRetirement * 12),
@@ -514,7 +499,7 @@ export default function Dashboard() {
 
               setProjection({
                 ...projectionData.data,
-                monthly_increase_needed: Number(monthlyIncreaseNeeded), // Ensure it's a native JavaScript number
+                monthly_increase_needed: Number(monthlyIncreaseNeeded),
               });
               setSummaryStats({
                 current_savings: userProfile.Current_Savings,
@@ -537,7 +522,7 @@ export default function Dashboard() {
               const monthlyIncreaseNeeded = Math.max(
                 0,
                 (targetAmount - userProfile.Current_Savings) / (35 * 12),
-              ); // Assume 35 years to retirement
+              );
 
               setSummaryStats({
                 current_savings: userProfile.Current_Savings,
@@ -549,7 +534,7 @@ export default function Dashboard() {
                 current_projection: userProfile.Current_Savings * 5,
                 adjusted_projection: targetAmount,
                 monthly_income_at_retirement: targetAmount / 12,
-                monthly_increase_needed: Number(monthlyIncreaseNeeded), // Ensure it's a native JavaScript number
+                monthly_increase_needed: Number(monthlyIncreaseNeeded),
               });
             }
           } catch (error) {
@@ -573,7 +558,7 @@ export default function Dashboard() {
               current_projection: userProfile.Current_Savings * 5,
               adjusted_projection: targetAmount,
               monthly_income_at_retirement: targetAmount / 12,
-              monthly_increase_needed: Number(monthlyIncreaseNeeded), // Ensure it's a native JavaScript number
+              monthly_increase_needed: Number(monthlyIncreaseNeeded),
             });
           }
 
@@ -583,7 +568,6 @@ export default function Dashboard() {
             const peerData = await peerResponse.json();
 
             if (peerData.success) {
-              // Convert common_investment_types to investment_types format expected by SummaryCard
               const investmentTypes = {};
               const peerStats = peerData.data.peer_stats || {};
 
@@ -786,22 +770,104 @@ export default function Dashboard() {
     currentUser: !!currentUser,
   });
 
+  // ─── LOADING SKELETON ──────────────────────────────────────────────────────
   if (authLoading || loading || initializing) {
     console.log("Dashboard showing loading screen");
     return (
-      <div className='min-h-screen bg-background flex items-center justify-center'>
-        <div className='text-center'>
-          <div className='animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto mb-4'></div>
-          <h2 className='text-2xl font-semibold text-card-foreground'>
-            Loading your dashboard...
-          </h2>
-          <p className='text-muted-foreground mt-2'>
-            Fetching your financial data
-          </p>
-        </div>
+      <div className='min-h-screen bg-background'>
+        {/* Skeleton Header */}
+        <header className='sticky top-0 z-50 border-b border-border/40 bg-card/95 backdrop-blur-sm'>
+          <div className='mx-auto max-w-7xl px-6 h-14 flex items-center justify-between'>
+            <div className='flex items-center gap-2'>
+              <div className='w-8 h-8 bg-blue-900 rounded-md flex items-center justify-center'>
+                <span className='text-white text-sm font-bold'>FA</span>
+              </div>
+              <span className='text-sm font-semibold text-foreground'>SuperWise</span>
+            </div>
+            <div className='w-20 h-7 bg-muted rounded-md animate-pulse' />
+          </div>
+        </header>
+
+        <main className='mx-auto max-w-7xl px-6 py-6 space-y-6'>
+          {/* Skeleton Profile Hero */}
+          <div className='bg-card rounded-lg border border-border/60 shadow-sm p-6 space-y-6'>
+            <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
+              <div className='flex gap-4'>
+                <div className='w-20 h-20 bg-muted rounded-full animate-pulse flex-shrink-0' />
+                <div className='flex-1 space-y-3 pt-1'>
+                  <div className='w-24 h-4 bg-muted rounded animate-pulse' />
+                  <div className='w-48 h-7 bg-muted rounded animate-pulse' />
+                  <div className='w-64 h-4 bg-muted rounded animate-pulse' />
+                  <div className='flex gap-2 pt-1'>
+                    {[60, 80, 72, 90].map((w, i) => (
+                      <div key={i} style={{ width: w }} className='h-6 bg-muted rounded-full animate-pulse' />
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className='space-y-3 flex flex-col justify-center'>
+                <div className='w-32 h-3 bg-muted rounded animate-pulse' />
+                <div className='w-24 h-12 bg-muted rounded animate-pulse' />
+                <div className='w-48 h-4 bg-muted rounded animate-pulse' />
+                <div className='w-full h-1 bg-muted rounded-full animate-pulse' />
+              </div>
+            </div>
+            <div className='border-t border-border/40' />
+            <div className='flex justify-between items-center'>
+              <div className='w-40 h-8 bg-muted rounded animate-pulse' />
+              <div className='w-36 h-9 bg-muted rounded animate-pulse' />
+            </div>
+          </div>
+
+          {/* Skeleton Financial Snapshot */}
+          <div className='bg-card rounded-lg border border-border/60 shadow-sm p-6 space-y-4'>
+            <div className='flex justify-between items-start'>
+              <div className='space-y-2'>
+                <div className='w-36 h-5 bg-muted rounded animate-pulse' />
+                <div className='w-24 h-3 bg-muted rounded animate-pulse' />
+              </div>
+              <div className='w-12 h-5 bg-muted rounded-full animate-pulse' />
+            </div>
+            <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4'>
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className='space-y-3 lg:border-r border-border/40 lg:pr-4 last:border-0'>
+                  <div className='w-10 h-10 bg-muted rounded-lg animate-pulse' />
+                  <div className='w-28 h-3 bg-muted rounded animate-pulse' />
+                  <div className='w-24 h-7 bg-muted rounded animate-pulse' />
+                  <div className='w-20 h-3 bg-muted rounded animate-pulse' />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Skeleton Workspace */}
+          <div className='grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-6'>
+            {/* Skeleton Sidebar */}
+            <div className='bg-card rounded-lg border border-border/60 shadow-sm p-2 space-y-1'>
+              {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+                <div key={i} className='flex items-center gap-3 px-3 py-2'>
+                  <div className='w-4 h-4 bg-muted rounded animate-pulse flex-shrink-0' />
+                  <div className='h-4 bg-muted rounded animate-pulse flex-1' />
+                </div>
+              ))}
+            </div>
+
+            {/* Skeleton Content Panel */}
+            <div className='bg-card rounded-lg border border-border/60 shadow-sm p-6 space-y-4'>
+              <div className='w-48 h-6 bg-muted rounded animate-pulse' />
+              <div className='w-full h-72 bg-muted/50 rounded-xl animate-pulse' />
+              <div className='grid grid-cols-3 gap-4'>
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className='h-20 bg-muted/50 rounded-xl animate-pulse' />
+                ))}
+              </div>
+            </div>
+          </div>
+        </main>
       </div>
     );
   }
+  // ──────────────────────────────────────────────────────────────────────────
 
   if (!currentUser) {
     console.log("Dashboard showing no currentUser screen");
@@ -1001,19 +1067,6 @@ export default function Dashboard() {
             </span>
           </div>
 
-          {/* Center: Nav Links */}
-          {/* <nav className='hidden md:flex items-center gap-8'>
-            <button className='text-sm font-medium text-foreground hover:text-primary transition-colors'>
-              Overview
-            </button>
-            <button className='text-sm font-medium text-muted-foreground hover:text-foreground transition-colors'>
-              Insights
-            </button>
-            <button className='text-sm font-medium text-muted-foreground hover:text-foreground transition-colors'>
-              Support
-            </button>
-          </nav> */}
-
           {/* Right: Sign Out Button */}
           <div className='flex items-center gap-2'>
             {isAdminMode && (
@@ -1052,7 +1105,6 @@ export default function Dashboard() {
                       {userInitial}
                     </span>
                   </div>
-                  {/* <div className='absolute bottom-0 right-0 w-5 h-5 bg-emerald-500 rounded-full border-2 border-white'></div> */}
                 </div>
 
                 {/* User Info */}
@@ -1296,101 +1348,38 @@ export default function Dashboard() {
                       : "text-muted-foreground hover:bg-muted"
                   }`}>
                   {tab.icon === "chat" && (
-                    <svg
-                      className='w-4 h-4'
-                      fill='none'
-                      stroke='currentColor'
-                      viewBox='0 0 24 24'>
-                      <path
-                        strokeLinecap='round'
-                        strokeLinejoin='round'
-                        strokeWidth={2}
-                        d='M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z'
-                      />
+                    <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                      <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z' />
                     </svg>
                   )}
                   {tab.icon === "grid" && (
-                    <svg
-                      className='w-4 h-4'
-                      fill='none'
-                      stroke='currentColor'
-                      viewBox='0 0 24 24'>
-                      <path
-                        strokeLinecap='round'
-                        strokeLinejoin='round'
-                        strokeWidth={2}
-                        d='M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z'
-                      />
+                    <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                      <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z' />
                     </svg>
                   )}
                   {tab.icon === "briefcase" && (
-                    <svg
-                      className='w-4 h-4'
-                      fill='none'
-                      stroke='currentColor'
-                      viewBox='0 0 24 24'>
-                      <path
-                        strokeLinecap='round'
-                        strokeLinejoin='round'
-                        strokeWidth={2}
-                        d='M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4'
-                      />
+                    <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                      <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4' />
                     </svg>
                   )}
                   {tab.icon === "target" && (
-                    <svg
-                      className='w-4 h-4'
-                      fill='none'
-                      stroke='currentColor'
-                      viewBox='0 0 24 24'>
-                      <path
-                        strokeLinecap='round'
-                        strokeLinejoin='round'
-                        strokeWidth={2}
-                        d='M13 10V3L4 14h7v7l9-11h-7z'
-                      />
+                    <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                      <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M13 10V3L4 14h7v7l9-11h-7z' />
                     </svg>
                   )}
                   {tab.icon === "calculator" && (
-                    <svg
-                      className='w-4 h-4'
-                      fill='none'
-                      stroke='currentColor'
-                      viewBox='0 0 24 24'>
-                      <path
-                        strokeLinecap='round'
-                        strokeLinejoin='round'
-                        strokeWidth={2}
-                        d='M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z'
-                      />
+                    <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                      <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z' />
                     </svg>
                   )}
                   {tab.icon === "book" && (
-                    <svg
-                      className='w-4 h-4'
-                      fill='none'
-                      stroke='currentColor'
-                      viewBox='0 0 24 24'>
-                      <path
-                        strokeLinecap='round'
-                        strokeLinejoin='round'
-                        strokeWidth={2}
-                        d='M12 6.253v13m0-13C6.228 6.228 2 7.486 2 8.72v10.56c0 1.234 4.228 2.492 10 2.492m0-13c5.772 0 10 1.258 10 2.492v10.56c0 1.234-4.228 2.492-10 2.492m0 0V23m0-13V5.5M2 8.72v10.56c0 1.234 4.228 2.492 10 2.492m0 0'
-                      />
+                    <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                      <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M12 6.253v13m0-13C6.228 6.228 2 7.486 2 8.72v10.56c0 1.234 4.228 2.492 10 2.492m0-13c5.772 0 10 1.258 10 2.492v10.56c0 1.234-4.228 2.492-10 2.492m0 0V23m0-13V5.5M2 8.72v10.56c0 1.234 4.228 2.492 10 2.492m0 0' />
                     </svg>
                   )}
                   {tab.icon === "shield" && (
-                    <svg
-                      className='w-4 h-4'
-                      fill='none'
-                      stroke='currentColor'
-                      viewBox='0 0 24 24'>
-                      <path
-                        strokeLinecap='round'
-                        strokeLinejoin='round'
-                        strokeWidth={2}
-                        d='M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'
-                      />
+                    <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                      <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' />
                     </svg>
                   )}
                   <span>{tab.label}</span>

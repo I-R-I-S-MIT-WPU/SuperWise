@@ -12,7 +12,7 @@ interface ChatMessage {
   type: 'user' | 'bot';
   content: string;
   timestamp: Date;
-  audioUrl?: string; // For TTS audio
+  audioUrl?: string;
 }
 
 type TablePart = {
@@ -25,7 +25,7 @@ type TablePart = {
 };
 
 interface ChatbotPageProps {
-  user: any; // UserProfile from Supabase
+  user: any;
 }
 
 export function ChatbotPageWithSpeech({ user }: ChatbotPageProps) {
@@ -45,17 +45,16 @@ export function ChatbotPageWithSpeech({ user }: ChatbotPageProps) {
   const [voices, setVoices] = useState<any[]>([]);
   const [selectedVoice, setSelectedVoice] = useState('en-AU-NatashaNeural');
   const [currentPlayingMessage, setCurrentPlayingMessage] = useState<string | null>(null);
+  const [showVoiceSelect, setShowVoiceSelect] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const { toast } = useToast();
 
-  // Load available voices on component mount
   useEffect(() => {
     loadVoices();
   }, []);
 
-  // Auto-scroll to bottom when messages change
   useEffect(() => {
     if (scrollAreaRef.current) {
       const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
@@ -85,7 +84,6 @@ export function ChatbotPageWithSpeech({ user }: ChatbotPageProps) {
     }
   };
 
-    // Function to parse and render markdown tables
   const parseMarkdownTable = (text: string) => {
     const tableRegex = /\|(.+)\|\s*\n\|[-\s|:]+\|\s*\n((?:\|.+\|\s*\n?)+)/g;
     const parts: TablePart[] = [];
@@ -93,7 +91,6 @@ export function ChatbotPageWithSpeech({ user }: ChatbotPageProps) {
     let match;
 
     while ((match = tableRegex.exec(text)) !== null) {
-      // Add text before the table
       if (match.index > lastIndex) {
         const beforeText = text.slice(lastIndex, match.index).trim();
         if (beforeText) {
@@ -101,11 +98,9 @@ export function ChatbotPageWithSpeech({ user }: ChatbotPageProps) {
         }
       }
 
-      // Parse table headers
       const headerRow = match[1];
       const headers = headerRow.split('|').map(h => h.trim()).filter(h => h);
 
-      // Parse table rows
       const bodyText = match[2];
       const rows = bodyText.trim().split('\n').map(row => {
         return row.split('|').map(cell => cell.trim()).filter(cell => cell);
@@ -120,7 +115,6 @@ export function ChatbotPageWithSpeech({ user }: ChatbotPageProps) {
       lastIndex = match.index + match[0].length;
     }
 
-    // Add remaining text after the last table
     if (lastIndex < text.length) {
       const remainingText = text.slice(lastIndex).trim();
       if (remainingText) {
@@ -128,7 +122,6 @@ export function ChatbotPageWithSpeech({ user }: ChatbotPageProps) {
       }
     }
 
-    // If no tables found, return the original text as a single text part
     if (parts.length === 0) {
       parts.push({ type: 'text', content: text });
     }
@@ -136,20 +129,19 @@ export function ChatbotPageWithSpeech({ user }: ChatbotPageProps) {
     return parts;
   };
 
-  // Function to render formatted text with proper sections
   const renderFormattedText = (text: string) => {
     const lines = text.split('\n').filter(line => line.trim());
-    const sectionHeaders = ['Summary', 'Strengths', 'Areas for Improvement', 'Recommendations', 
-                          'Next Steps', 'Encouragement Statement', 'Key Metrics', 'Financial Snapshot'];
-    
+    const sectionHeaders = ['Summary', 'Strengths', 'Areas for Improvement', 'Recommendations',
+      'Next Steps', 'Encouragement Statement', 'Key Metrics', 'Financial Snapshot'];
+
     return lines.map((line, lineIdx) => {
       const isHeading = sectionHeaders.some(header => line.trim().startsWith(header));
       const isBullet = line.trim().startsWith('-');
       const isNumbered = line.trim().match(/^\d+\./);
-      
+
       return (
-        <div 
-          key={lineIdx} 
+        <div
+          key={lineIdx}
           className={`
             ${isHeading ? 'font-semibold mt-3 mb-2 text-card-foreground text-base' : ''}
             ${isBullet || isNumbered ? 'ml-4 mb-1' : 'mb-2'}
@@ -166,22 +158,22 @@ export function ChatbotPageWithSpeech({ user }: ChatbotPageProps) {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
-      
+
       const audioChunks: Blob[] = [];
-      
+
       mediaRecorder.ondataavailable = (event) => {
         audioChunks.push(event.data);
       };
-      
+
       mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
         await processAudioInput(audioBlob);
         stream.getTracks().forEach(track => track.stop());
       };
-      
+
       mediaRecorder.start();
       setIsRecording(true);
-      
+
       toast({
         title: "Recording Started",
         description: "Speak your question now...",
@@ -208,7 +200,7 @@ export function ChatbotPageWithSpeech({ user }: ChatbotPageProps) {
       const arrayBuffer = await audioBlob.arrayBuffer();
       const uint8Array = new Uint8Array(arrayBuffer);
       const hexString = Array.from(uint8Array).map(b => b.toString(16).padStart(2, '0')).join('');
-      
+
       const response = await fetch('http://localhost:8000/speech-to-text', {
         method: 'POST',
         headers: {
@@ -219,9 +211,9 @@ export function ChatbotPageWithSpeech({ user }: ChatbotPageProps) {
           language: 'en-AU'
         }),
       });
-      
+
       const result = await response.json();
-      
+
       if (result.success) {
         setInputValue(result.text);
         toast({
@@ -256,10 +248,9 @@ export function ChatbotPageWithSpeech({ user }: ChatbotPageProps) {
 
   const textToSpeech = async (text: string, messageId?: string) => {
     if (!speechEnabled) return;
-    
-    // Stop any currently playing audio
+
     stopAudioPlayback();
-    
+
     try {
       const response = await fetch('http://localhost:8000/text-to-speech', {
         method: 'POST',
@@ -271,22 +262,20 @@ export function ChatbotPageWithSpeech({ user }: ChatbotPageProps) {
           voice_name: selectedVoice
         }),
       });
-      
+
       const result = await response.json();
-      
+
       if (result.success) {
-        // Convert hex string back to audio data
         const audioData = new Uint8Array(result.audio_data.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
         const audioBlob = new Blob([audioData], { type: 'audio/wav' });
         const audioUrl = URL.createObjectURL(audioBlob);
-        
-        // Play the audio
+
         if (audioRef.current) {
           audioRef.current.src = audioUrl;
           audioRef.current.play();
           setIsPlaying(true);
           setCurrentPlayingMessage(messageId || null);
-          
+
           audioRef.current.onended = () => {
             setIsPlaying(false);
             setCurrentPlayingMessage(null);
@@ -315,10 +304,9 @@ export function ChatbotPageWithSpeech({ user }: ChatbotPageProps) {
     setIsLoading(true);
 
     try {
-      // Call the real AI API
       const userId = (user && (user.User_ID || user.id || user.userId)) as string;
       const response = await dataService.sendChatMessage(userId, currentInput);
-      
+
       const botResponse: ChatMessage = {
         id: (Date.now() + 1).toString(),
         type: 'bot',
@@ -327,8 +315,7 @@ export function ChatbotPageWithSpeech({ user }: ChatbotPageProps) {
       };
 
       setMessages(prev => [...prev, botResponse]);
-      
-      // Convert bot response to speech
+
       if (speechEnabled) {
         await textToSpeech(botResponse.content, botResponse.id);
       }
@@ -354,83 +341,121 @@ export function ChatbotPageWithSpeech({ user }: ChatbotPageProps) {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  return (
-    <div className="space-y-8">
-      {/* Speech Controls - Always visible when speech is enabled */}
-      <Card className="dashboard-card">
-        <CardHeader>
-          <CardTitle className="text-xl font-bold text-card-foreground flex items-center gap-3">
-            <Volume2 className="w-6 h-6" />
-            Speech Controls
-            {!speechEnabled && <span className="text-sm font-normal text-muted-foreground">(Disabled)</span>}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium">Voice:</label>
-              <select
-                value={selectedVoice}
-                onChange={(e) => setSelectedVoice(e.target.value)}
-                className="px-3 py-2 border border-border rounded-md bg-white dark:bg-slate-950 text-zinc-900 dark:text-white outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                aria-label="Select voice for text-to-speech"
-                disabled={!speechEnabled}
-              >
-                {Object.entries(voices).map(([lang, voiceList]: [string, any]) => (
-                  <optgroup key={lang} label={lang.toUpperCase()}>
-                    {Array.isArray(voiceList) && voiceList.map((voice: any) => (
-                      <option key={voice.name} value={voice.name} className="bg-white dark:bg-slate-950 text-zinc-900 dark:text-white">
-                        {voice.display}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
-            </div>
-            
-            <Button
-              onClick={isRecording ? stopRecording : startRecording}
-              variant={isRecording ? "destructive" : "default"}
-              className="flex items-center gap-2"
-              disabled={!speechEnabled}
-            >
-              {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-              {isRecording ? "Stop Recording" : "Start Recording"}
-            </Button>
-            
-            {isPlaying && (
-              <Button
-                onClick={stopAudioPlayback}
-                variant="destructive"
-                className="flex items-center gap-2"
-              >
-                <VolumeX className="w-4 h-4" />
-                Stop Audio
-              </Button>
-            )}
-            
-            <Button
-              onClick={() => setSpeechEnabled(!speechEnabled)}
-              variant="outline"
-              className="flex items-center gap-2"
-            >
-              {speechEnabled ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-              {speechEnabled ? "Disable Speech" : "Enable Speech"}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+  // Voice display name helper
+  const getVoiceDisplayName = () => {
+    for (const [, voiceList] of Object.entries(voices)) {
+      if (Array.isArray(voiceList)) {
+        const found = voiceList.find((v: any) => v.name === selectedVoice);
+        if (found) return found.display?.split(' ')[0] ?? 'Voice';
+      }
+    }
+    return selectedVoice.includes('Natasha') ? 'Natasha' : 'Voice';
+  };
 
-      {/* Chat Interface */}
-      <Card className="dashboard-card">
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold text-card-foreground flex items-center gap-3">
-            <MessageCircle className="w-7 h-7" />
-            AI Superannuation Advisor {speechEnabled && <span className="text-sm font-normal text-muted-foreground">(with Speech)</span>}
-          </CardTitle>
+  const sampleQuestions = [
+    "What is my risk category?",
+    "How much will I retire with?",
+    "Am I on track?",
+    "Compare to my age group",
+    "Increase contribution by $200?",
+    "Should I change risk profile?"
+  ];
+
+  return (
+    <div className="h-full flex flex-col">
+      {/* Unified Chat Card */}
+      <Card className="dashboard-card flex flex-col flex-1">
+        <CardHeader className="py-3 px-4">
+          <div className="flex items-center justify-between">
+            {/* Title */}
+            <CardTitle className="text-lg font-semibold text-card-foreground flex items-center gap-2">
+              <MessageCircle className="w-5 h-5" />
+              AI Advisor
+            </CardTitle>
+
+            {/* Right: Mic + Speaker + Voice selector */}
+            <div className="flex items-center gap-2">
+              {/* Mic toggle button */}
+              <Button
+                onClick={isRecording ? stopRecording : startRecording}
+                variant={isRecording ? "destructive" : "outline"}
+                size="icon"
+                className="h-9 w-9 rounded-lg"
+                disabled={!speechEnabled}
+                title={isRecording ? "Stop recording" : "Start voice input"}
+              >
+                {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+              </Button>
+
+              {/* Speaker / stop audio button */}
+              <Button
+                onClick={isPlaying ? stopAudioPlayback : () => setSpeechEnabled(!speechEnabled)}
+                variant="outline"
+                size="icon"
+                className="h-9 w-9 rounded-lg"
+                title={isPlaying ? "Stop audio" : speechEnabled ? "Disable speech" : "Enable speech"}
+              >
+                {isPlaying ? (
+                  <VolumeX className="w-4 h-4 text-red-500" />
+                ) : speechEnabled ? (
+                  <Volume2 className="w-4 h-4" />
+                ) : (
+                  <VolumeX className="w-4 h-4 text-muted-foreground" />
+                )}
+              </Button>
+
+              {/* Voice selector dropdown */}
+              {speechEnabled && (
+                <div className="relative">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowVoiceSelect(!showVoiceSelect)}
+                    className="h-9 px-3 rounded-lg text-sm font-medium flex items-center gap-1"
+                    title="Change voice"
+                  >
+                    {getVoiceDisplayName()}
+                    <span className="text-muted-foreground text-xs">▾</span>
+                  </Button>
+                  {showVoiceSelect && (
+                    <div className="absolute right-0 top-10 z-50 bg-card border border-border rounded-xl shadow-xl p-1 min-w-[220px]">
+                      <p className="text-xs text-muted-foreground px-3 py-2 font-medium">Select Voice</p>
+                      <div className="max-h-56 overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-muted/30 [&::-webkit-scrollbar-thumb]:bg-muted-foreground/30 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-muted-foreground/50">
+                        {Object.entries(voices).map(([lang, voiceList]: [string, any]) => (
+                          <div key={lang}>
+                            <p className="text-xs text-muted-foreground/60 px-3 py-1 uppercase tracking-wider font-semibold">
+                              {lang}
+                            </p>
+                            {Array.isArray(voiceList) && voiceList.map((voice: any) => (
+                              <button
+                                key={voice.name}
+                                onClick={() => { setSelectedVoice(voice.name); setShowVoiceSelect(false); }}
+                                className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-colors hover:bg-muted flex items-center justify-between ${
+                                  selectedVoice === voice.name
+                                    ? 'bg-primary/10 text-primary font-medium'
+                                    : 'text-foreground'
+                                }`}
+                              >
+                                {voice.display}
+                                {selectedVoice === voice.name && (
+                                  <span className="text-primary text-xs">✓</span>
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
         </CardHeader>
-        <CardContent>
-          <div className="h-96 border border-border rounded-xl overflow-hidden">
+
+        <CardContent className="space-y-3 pt-0 pb-4 px-4 flex flex-col flex-1">
+          {/* Chat Area */}
+          <div className="flex-1 min-h-[300px] border border-border rounded-xl overflow-hidden">
             <ScrollArea ref={scrollAreaRef} className="h-full">
               <div className="p-4 space-y-4">
                 {messages.map((message) => (
@@ -443,10 +468,10 @@ export function ChatbotPageWithSpeech({ user }: ChatbotPageProps) {
                         <Bot className="w-4 h-4 text-primary-foreground" />
                       </div>
                     )}
-                    
+
                     <div className={`max-w-[80%] ${message.type === 'user' ? 'order-first' : ''}`}>
                       <div
-                        className={`p-4 rounded-xl text-lg ${
+                        className={`p-3 rounded-xl text-sm ${
                           message.type === 'user'
                             ? 'bg-primary text-primary-foreground ml-auto'
                             : 'bg-muted'
@@ -459,13 +484,13 @@ export function ChatbotPageWithSpeech({ user }: ChatbotPageProps) {
                                 return (
                                   <div key={idx} className="my-4">
                                     <div className="overflow-x-auto">
-                                      <table className="w-full border-collapse border border-gray-300 bg-white rounded-lg shadow-sm">
+                                      <table className="w-full border-collapse border border-border rounded-lg">
                                         <thead>
-                                          <tr className="bg-gray-50">
+                                          <tr className="bg-muted/60">
                                             {part.headers.map((header: string, headerIdx: number) => (
                                               <th
                                                 key={headerIdx}
-                                                className="border border-gray-300 px-3 py-2 text-left font-semibold text-gray-700 text-sm"
+                                                className="border border-border px-3 py-2 text-left font-semibold text-card-foreground text-sm"
                                               >
                                                 {header}
                                               </th>
@@ -474,11 +499,11 @@ export function ChatbotPageWithSpeech({ user }: ChatbotPageProps) {
                                         </thead>
                                         <tbody>
                                           {part.rows.map((row: string[], rowIdx: number) => (
-                                            <tr key={rowIdx} className={rowIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                            <tr key={rowIdx} className={rowIdx % 2 === 0 ? '' : 'bg-muted/30'}>
                                               {row.map((cell: string, cellIdx: number) => (
                                                 <td
                                                   key={cellIdx}
-                                                  className="border border-gray-300 px-3 py-2 text-gray-800 text-sm"
+                                                  className="border border-border px-3 py-2 text-card-foreground text-sm"
                                                 >
                                                   {cell}
                                                 </td>
@@ -523,7 +548,7 @@ export function ChatbotPageWithSpeech({ user }: ChatbotPageProps) {
                         )}
                       </div>
                     </div>
-                    
+
                     {message.type === 'user' && (
                       <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center flex-shrink-0">
                         <User className="w-4 h-4" />
@@ -531,16 +556,16 @@ export function ChatbotPageWithSpeech({ user }: ChatbotPageProps) {
                     )}
                   </div>
                 ))}
-                
+
                 {isLoading && (
                   <div className="flex gap-3 justify-start">
                     <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
                       <Bot className="w-4 h-4 text-primary-foreground" />
                     </div>
-                    <div className="p-4 bg-muted rounded-xl">
+                    <div className="p-3 bg-muted rounded-xl">
                       <div className="flex items-center gap-2">
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        <span className="text-lg">AI is thinking...</span>
+                        <span className="text-sm">AI is thinking...</span>
                       </div>
                     </div>
                   </div>
@@ -548,52 +573,36 @@ export function ChatbotPageWithSpeech({ user }: ChatbotPageProps) {
               </div>
             </ScrollArea>
           </div>
-          
-          <div className="mt-4 flex gap-2">
+
+          {/* Input Row — styled container like the reference image */}
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-border bg-muted/20 dark:bg-muted/10">
             <Input
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              placeholder="Ask me anything about your superannuation..."
-              className="flex-1 h-12 text-lg"
+              placeholder="Ask me anything..."
+              className="flex-1 h-9 text-sm bg-transparent border-none shadow-none focus-visible:ring-0 text-foreground placeholder:text-muted-foreground px-0"
               onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
             />
-            <Button 
-              onClick={handleSendMessage} 
+            <Button
+              onClick={handleSendMessage}
               disabled={!inputValue.trim() || isLoading}
-              className="h-12 px-6"
+              size="icon"
+              className="h-8 w-8 flex-shrink-0 rounded-lg"
             >
-              <Send className="w-5 h-5" />
+              <Send className="w-4 h-4" />
             </Button>
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Sample Questions */}
-      <Card className="dashboard-card">
-        <CardHeader>
-          <CardTitle className="text-xl font-bold text-card-foreground">
-            Try These Sample Questions
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid md:grid-cols-2 gap-3">
-            {[
-              "What is my risk category?",
-              "What if I increase my monthly contribution by $200?",
-              "How much will I retire with?",
-              "How do I compare to others my age?",
-              "Am I on track for retirement?",
-              "Should I consider changing my risk profile?"
-            ].map((question, index) => (
-              <Button
+          {/* Sample Questions — chips below input */}
+          <div className="flex flex-wrap gap-2">
+            {sampleQuestions.map((question, index) => (
+              <button
                 key={index}
-                variant="outline"
                 onClick={() => handleSampleQuestion(question)}
-                className="h-auto p-4 text-left justify-start text-lg hover:bg-muted whitespace-normal"
+                className="inline-flex items-center px-3 py-1.5 text-xs rounded-full border border-border bg-background hover:bg-muted text-foreground transition-colors"
               >
-                <MessageCircle className="w-4 h-4 mr-2 flex-shrink-0 mt-1 self-start" />
-                <span className="flex-1 text-left">{question}</span>
-              </Button>
+                {question}
+              </button>
             ))}
           </div>
         </CardContent>

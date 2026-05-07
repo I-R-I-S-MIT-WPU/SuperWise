@@ -20,16 +20,16 @@ export function PortfolioGrowth({ data, currentAge, retirementAge }: PortfolioGr
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
-      const data = payload[0].payload;
-      const age = currentAge + (data.year - new Date().getFullYear());
-      
+      const dataPoint = payload[0].payload;
+      const age = currentAge + (dataPoint.year - new Date().getFullYear());
+
       return (
-        <div className="bg-card border border-card-border rounded-xl p-4 shadow-lg">
-          <p className="font-semibold text-lg">Year {data.year} (Age {age})</p>
-          <p className="text-success">Balance: ${data.balance.toLocaleString()}</p>
-          <p className="text-primary">Contributions: ${data.contributions.toLocaleString()}</p>
-          {data.milestone && (
-            <p className="text-warning font-medium mt-1">🎯 {data.milestone}</p>
+        <div className="bg-card border border-border rounded-xl p-4 shadow-lg">
+          <p className="font-semibold text-lg text-card-foreground">Year {dataPoint.year} (Age {age})</p>
+          <p className="text-emerald-500">Balance: ${dataPoint.balance.toLocaleString()}</p>
+          <p className="text-primary">Contributions: ${dataPoint.contributions.toLocaleString()}</p>
+          {dataPoint.milestone && (
+            <p className="text-amber-500 font-medium mt-1">🎯 {dataPoint.milestone}</p>
           )}
         </div>
       );
@@ -58,30 +58,36 @@ export function PortfolioGrowth({ data, currentAge, retirementAge }: PortfolioGr
       <div className="h-80 mb-6">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-            <XAxis 
-              dataKey="year" 
-              className="text-sm"
-              tick={{ fontSize: 12 }}
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke="hsl(var(--border))"
+              opacity={0.5}
             />
-            <YAxis 
+            <XAxis
+              dataKey="year"
+              tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+              axisLine={{ stroke: 'hsl(var(--border))' }}
+              tickLine={{ stroke: 'hsl(var(--border))' }}
+            />
+            <YAxis
               tickFormatter={formatCurrency}
-              className="text-sm"
-              tick={{ fontSize: 12 }}
+              tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+              axisLine={{ stroke: 'hsl(var(--border))' }}
+              tickLine={{ stroke: 'hsl(var(--border))' }}
             />
             <Tooltip content={<CustomTooltip />} />
-            
-            <ReferenceLine 
-              x={currentAge + (retirementAge - currentAge)} 
-              stroke="#ef4444" 
+
+            <ReferenceLine
+              x={currentAge + (retirementAge - currentAge)}
+              stroke="hsl(var(--destructive))"
               strokeDasharray="5 5"
-              label={{ value: "Retirement", position: "top" }}
+              label={{ value: "Retirement", position: "top", fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
             />
-            
-            <Line 
-              type="monotone" 
-              dataKey="balance" 
-              stroke="hsl(var(--success))" 
+
+            <Line
+              type="monotone"
+              dataKey="balance"
+              stroke="hsl(var(--success))"
               strokeWidth={3}
               dot={{ fill: "hsl(var(--success))", strokeWidth: 2, r: 4 }}
               activeDot={{ r: 6, stroke: "hsl(var(--success))", strokeWidth: 2 }}
@@ -97,14 +103,14 @@ export function PortfolioGrowth({ data, currentAge, retirementAge }: PortfolioGr
           </div>
           <div className="text-sm text-muted-foreground">Projected at retirement</div>
         </div>
-        
+
         <div className="text-center p-4 bg-primary/5 rounded-xl">
           <div className="text-2xl font-bold text-primary mb-1">
             {retirementAge - currentAge} years
           </div>
           <div className="text-sm text-muted-foreground">Until retirement</div>
         </div>
-        
+
         <div className="text-center p-4 bg-warning/5 rounded-xl">
           <div className="text-2xl font-bold text-warning mb-1">
             7.2%
