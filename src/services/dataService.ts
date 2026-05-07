@@ -1,10 +1,7 @@
 // Data service for superannuation advisor dashboard
 // Connects to ML backend API
 
-// const API_BASE_URL = '/api';
-
-const API = import.meta.env.VITE_API_URL;
-fetch(`${API}/predict/1`);
+const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 export interface SignupData {
   name: string;
@@ -133,10 +130,8 @@ export const dataService = {
   // Get user profile from API
   getUserById: async (userId: string): Promise<UserProfile | null> => {
     try {
-      console.log(
-        `Fetching user ${userId} from ${API_BASE_URL}/user/${userId}`,
-      );
-      const response = await fetch(`${API_BASE_URL}/user/${userId}`);
+      console.log(`Fetching user ${userId} from ${API}/user/${userId}`);
+      const response = await fetch(`${API}/user/${userId}`);
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: User ${userId} not found`);
       }
@@ -158,7 +153,7 @@ export const dataService = {
   getSummaryStats: async (userId: string) => {
     try {
       console.log(`Fetching summary for ${userId}`);
-      const response = await fetch(`${API_BASE_URL}/summary/${userId}`);
+      const response = await fetch(`${API}/summary/${userId}`);
       if (!response.ok) {
         throw new Error(
           `HTTP ${response.status}: Summary not found for user ${userId}`,
@@ -177,7 +172,7 @@ export const dataService = {
   getPeerComparison: async (userId: string) => {
     try {
       console.log(`Fetching peer stats for ${userId}`);
-      const response = await fetch(`${API_BASE_URL}/peer_stats/${userId}`);
+      const response = await fetch(`${API}/peer_stats/${userId}`);
       if (!response.ok) {
         throw new Error(
           `HTTP ${response.status}: Peer stats not found for user ${userId}`,
@@ -198,7 +193,7 @@ export const dataService = {
       console.log(
         `Fetching projection for ${userId} with extra monthly: ${extraMonthly}`,
       );
-      const response = await fetch(`${API_BASE_URL}/simulate`, {
+      const response = await fetch(`${API}/simulate`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -225,7 +220,7 @@ export const dataService = {
   // Get risk prediction
   getRiskPrediction: async (userId: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/risk/${userId}`);
+      const response = await fetch(`${API}/risk/${userId}`);
       if (!response.ok) {
         throw new Error(`Risk prediction not found for user ${userId}`);
       }
@@ -240,7 +235,7 @@ export const dataService = {
   // Send chat message to AI
   sendChatMessage: async (userId: string, message: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/chat`, {
+      const response = await fetch(`${API}/chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -396,7 +391,7 @@ export const dataService = {
 
       // Also try to save to backend API as backup
       try {
-        const response = await fetch(`${API_BASE_URL}/signup`, {
+        const response = await fetch(`${API}/signup`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -433,7 +428,7 @@ export const dataService = {
 
   getAllUsers: async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/users`);
+      const response = await fetch(`${API}/users`);
       if (!response.ok) {
         throw new Error(`Failed to fetch users: ${response.statusText}`);
       }
