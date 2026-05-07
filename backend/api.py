@@ -1,6 +1,7 @@
 import asyncio
 import os
 from typing import Any, Dict, Optional
+from fastapi.middleware.cors import CORSMiddleware
 
 import numpy as np
 import uvicorn
@@ -19,6 +20,14 @@ from supabase_config import (
     append_user_profile_to_local_csv,
 )
 
+app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 # Load environment variables from backend or project root (optional)
 env_paths = [
     os.path.join(os.path.dirname(__file__), ".env"),
