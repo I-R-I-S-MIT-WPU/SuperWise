@@ -52,6 +52,7 @@ import {
   Cell,
 } from "recharts";
 import { useToast } from "@/hooks/use-toast";
+import { useTheme } from "@/contexts/ThemeContext";
 
 interface SignupFormProps {
   onSignupSuccess: (userId: string) => void;
@@ -115,6 +116,7 @@ export function SignupForm({ onSignupSuccess, onCancel }: SignupFormProps) {
   const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
   const { toast } = useToast();
+  const { ThemeToggle } = useTheme();
 
   // Define conversation steps
   const conversationSteps: ConversationStep[] = [
@@ -416,24 +418,23 @@ export function SignupForm({ onSignupSuccess, onCancel }: SignupFormProps) {
     contribution_amount: 1000,
     contribution_frequency: "Monthly",
     employer_contribution: 500,
-    years_contributed: 19, // Median from CSV: 18.5 rounded up
-    investment_type: "Stocks", // Most common from CSV
-    fund_name: "Jackson-Ryan", // Most common fund name from CSV
+    years_contributed: 19,
+    investment_type: "Stocks",
+    fund_name: "Jackson-Ryan",
     marital_status: "Single",
     number_of_dependents: 0,
-    education_level: "PhD", // Most common from CSV
-    health_status: "Good", // Most common from CSV
-    home_ownership_status: "Rent", // Most common from CSV
+    education_level: "PhD",
+    health_status: "Good",
+    home_ownership_status: "Rent",
     investment_experience_level: "Beginner",
     financial_goals: "Retirement",
-    insurance_coverage: "Yes", // Most common from CSV
-    pension_type: "Defined Contribution", // Most common from CSV
-    withdrawal_strategy: "Bucket", // Most common from CSV
-    // Additional fields used by ML models
+    insurance_coverage: "Yes",
+    pension_type: "Defined Contribution",
+    withdrawal_strategy: "Bucket",
     debt_level: "Low",
-    savings_rate: 0.15, // 15% savings rate
-    portfolio_diversity_score: 0.6, // Moderate diversity
-    monthly_expenses: 2500, // Estimated based on income
+    savings_rate: 0.15,
+    portfolio_diversity_score: 0.6,
+    monthly_expenses: 2500,
     transaction_amount: 0,
     transaction_pattern_score: 0.5,
     anomaly_score: 0.1,
@@ -504,7 +505,6 @@ export function SignupForm({ onSignupSuccess, onCancel }: SignupFormProps) {
     }));
   };
 
-  // Function to scroll chat to bottom
   const scrollChatToBottom = () => {
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop =
@@ -512,16 +512,13 @@ export function SignupForm({ onSignupSuccess, onCancel }: SignupFormProps) {
     }
   };
 
-  // Load available voices on component mount
   const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
   useEffect(() => {
     loadVoices();
   }, []);
 
-  // Auto-scroll chat to bottom when new messages are added
   useEffect(() => {
-    // Small delay to ensure DOM has updated
     setTimeout(() => {
       scrollChatToBottom();
     }, 100);
@@ -559,7 +556,6 @@ export function SignupForm({ onSignupSuccess, onCancel }: SignupFormProps) {
         },
       });
 
-      // Try to use WAV format, fallback to webm if not supported
       let mimeType = "audio/wav";
       if (!MediaRecorder.isTypeSupported("audio/wav")) {
         mimeType = "audio/webm";
@@ -582,7 +578,7 @@ export function SignupForm({ onSignupSuccess, onCancel }: SignupFormProps) {
         stream.getTracks().forEach((track) => track.stop());
       };
 
-      mediaRecorder.start(100); // Collect data every 100ms
+      mediaRecorder.start(100);
       setIsRecording(true);
 
       toast({
@@ -628,7 +624,6 @@ export function SignupForm({ onSignupSuccess, onCancel }: SignupFormProps) {
       const result = await response.json();
 
       if (result.success) {
-        // Process the recognized text with the current step
         if (voiceGuidedMode && currentStepIndex < conversationSteps.length) {
           const currentStep = conversationSteps[currentStepIndex];
           const extractedValue = await parseUserInputWithLLM(
@@ -680,7 +675,6 @@ export function SignupForm({ onSignupSuccess, onCancel }: SignupFormProps) {
             }
           }
         } else {
-          // Regular chat mode
           setChatInput(result.text);
         }
 
@@ -717,7 +711,6 @@ export function SignupForm({ onSignupSuccess, onCancel }: SignupFormProps) {
   const textToSpeech = async (text: string, messageId?: string) => {
     if (!speechEnabled) return;
 
-    // Stop any currently playing audio
     stopAudioPlayback();
 
     try {
@@ -778,7 +771,6 @@ export function SignupForm({ onSignupSuccess, onCancel }: SignupFormProps) {
       },
     ]);
 
-    // Speak the first question
     if (speechEnabled) {
       textToSpeech(conversationSteps[0].question, "2");
     }
@@ -799,7 +791,6 @@ export function SignupForm({ onSignupSuccess, onCancel }: SignupFormProps) {
     setCalculatorInputs((prev) => ({ ...prev, [key]: value }));
   };
 
-  // Update calculator inputs when form data changes
   const updateCalculatorFromForm = () => {
     setCalculatorInputs((prev) => ({
       ...prev,
@@ -824,12 +815,10 @@ export function SignupForm({ onSignupSuccess, onCancel }: SignupFormProps) {
     try {
       const result = await dataService.signupUser(formData);
 
-      // Store user data in localStorage for the retirement calculator to access
       localStorage.setItem(`user_${result.userId}`, JSON.stringify(formData));
 
       setSuccess(true);
       setTimeout(() => {
-        // Call onSignupSuccess with the userId to navigate to dashboard
         onSignupSuccess(result.userId);
       }, 2000);
     } catch (error) {
@@ -952,7 +941,6 @@ Examples:
 
       setChatMessages((prev) => [...prev, botMessage]);
 
-      // Speak the next question in voice guided mode
       if (voiceGuidedMode && speechEnabled) {
         textToSpeech(nextStep.question, botMessage.id);
       }
@@ -967,7 +955,6 @@ Examples:
 
       setChatMessages((prev) => [...prev, completionMessage]);
 
-      // Speak the completion message in voice guided mode
       if (voiceGuidedMode && speechEnabled) {
         textToSpeech(completionMessage.message, completionMessage.id);
       }
@@ -1162,7 +1149,7 @@ Examples:
   // Success screen
   if (success) {
     return (
-      <div className='min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4'>
+      <div className='min-h-screen bg-gradient-to-br from-background via-blue-50 to-indigo-100 dark:from-background dark:via-slate-900 dark:to-slate-800 flex items-center justify-center p-4'>
         <Card className='w-full max-w-md'>
           <CardContent className='pt-6'>
             <div className='text-center'>
@@ -1170,7 +1157,7 @@ Examples:
               <h2 className='text-2xl font-bold text-green-700 mb-2'>
                 Signup Successful!
               </h2>
-              <p className='text-gray-600'>
+              <p className='text-muted-foreground'>
                 Welcome to SuperWise! Loading your retirement calculator...
               </p>
             </div>
@@ -1183,14 +1170,14 @@ Examples:
   // Calculator screen
   if (showCalculator) {
     return (
-      <div className='min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4'>
+      <div className='min-h-screen bg-gradient-to-br from-background via-blue-50 to-indigo-100 dark:from-background dark:via-slate-900 dark:to-slate-800 p-4'>
         <div className='max-w-7xl mx-auto space-y-6'>
           <div className='flex items-center justify-between mb-8'>
             <div>
-              <h1 className='text-4xl font-bold text-gray-900 mb-2'>
+              <h1 className='text-4xl font-bold text-foreground mb-2'>
                 Welcome to SuperWise, {formData.name}!
               </h1>
-              <p className='text-xl text-gray-600'>
+              <p className='text-xl text-muted-foreground'>
                 Here's your personalized retirement projection
               </p>
             </div>
@@ -1294,7 +1281,7 @@ Examples:
                     <div className='text-3xl font-bold text-green-600 mb-2'>
                       {formatCurrency(retirementAnalysis.projectedBalance)}
                     </div>
-                    <div className='text-sm text-gray-600'>
+                    <div className='text-sm text-muted-foreground'>
                       Projected Balance at Retirement
                     </div>
                   </CardContent>
@@ -1307,7 +1294,7 @@ Examples:
                         retirementAnalysis.monthlyRetirementIncome,
                       )}
                     </div>
-                    <div className='text-sm text-gray-600'>
+                    <div className='text-sm text-muted-foreground'>
                       Monthly Retirement Income
                     </div>
                   </CardContent>
@@ -1320,7 +1307,7 @@ Examples:
                       {retirementAnalysis.shortfall > 0 ? "-" : "+"}
                       {formatCurrency(Math.abs(retirementAnalysis.shortfall))}
                     </div>
-                    <div className='text-sm text-gray-600'>
+                    <div className='text-sm text-muted-foreground'>
                       {retirementAnalysis.shortfall > 0
                         ? "Shortfall"
                         : "Surplus"}
@@ -1407,7 +1394,7 @@ Examples:
                   <CardContent>
                     <div className='space-y-4'>
                       <div className='flex justify-between'>
-                        <span className='text-gray-600'>
+                        <span className='text-muted-foreground'>
                           Years to Retirement:
                         </span>
                         <span className='font-semibold'>
@@ -1417,7 +1404,7 @@ Examples:
                         </span>
                       </div>
                       <div className='flex justify-between'>
-                        <span className='text-gray-600'>
+                        <span className='text-muted-foreground'>
                           Total You'll Contribute:
                         </span>
                         <span className='font-semibold'>
@@ -1427,7 +1414,7 @@ Examples:
                         </span>
                       </div>
                       <div className='flex justify-between'>
-                        <span className='text-gray-600'>
+                        <span className='text-muted-foreground'>
                           Investment Growth:
                         </span>
                         <span className='font-semibold text-green-600'>
@@ -1435,7 +1422,7 @@ Examples:
                         </span>
                       </div>
                       <div className='flex justify-between'>
-                        <span className='text-gray-600'>Return Multiple:</span>
+                        <span className='text-muted-foreground'>Return Multiple:</span>
                         <span className='font-semibold'>
                           {(
                             retirementAnalysis.projectedBalance /
@@ -1445,7 +1432,7 @@ Examples:
                         </span>
                       </div>
                       <div className='flex justify-between'>
-                        <span className='text-gray-600'>
+                        <span className='text-muted-foreground'>
                           Monthly Income at Retirement:
                         </span>
                         <span className='font-semibold text-blue-600'>
@@ -1455,7 +1442,7 @@ Examples:
                         </span>
                       </div>
                       <div className='flex justify-between'>
-                        <span className='text-gray-600'>Status:</span>
+                        <span className='text-muted-foreground'>Status:</span>
                         <span
                           className={`font-semibold ${retirementAnalysis.shortfall > 0 ? "text-red-600" : "text-green-600"}`}>
                           {retirementAnalysis.shortfall > 0
@@ -1536,7 +1523,7 @@ Examples:
                       </div>
                     )}
 
-                    <div className='bg-blue-50 border border-blue-200 rounded-lg p-4'>
+                    <div className='bg-muted/70 border border-border rounded-lg p-4 dark:bg-slate-950'>
                       <h4 className='font-semibold text-blue-800 mb-2'>
                         Based on Your Profile
                       </h4>
@@ -1578,21 +1565,25 @@ Examples:
 
   // Main signup form
   return (
-    <div className='min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4'>
+    <div className='min-h-screen bg-gradient-to-br from-background via-blue-50 to-indigo-100 dark:from-background dark:via-slate-900 dark:to-slate-800 flex items-center justify-center p-4'>
       <div className='flex gap-6 w-full max-w-6xl'>
-        {/* Chatbot Panel */}
-        <div className='w-96 h-fit bg-white rounded-lg shadow-2xl border flex flex-col'>
-          {/* Chat Header */}
-          <div className='bg-blue-600 text-white px-4 py-3 rounded-t-lg flex items-center gap-2'>
-            <Bot className='w-5 h-5' />
-            <span className='font-medium'>
-              Form Assistant ({currentStepIndex + 1}/{conversationSteps.length})
-            </span>
+        {/* Chatbot Panel — overflow-hidden keeps children inside rounded corners */}
+        <div className='w-96 h-fit bg-card rounded-lg shadow-2xl border flex flex-col overflow-hidden'>
+
+          {/* Chat Header — muted dark tone instead of bright primary */}
+          <div className='bg-slate-800 dark:bg-slate-900 text-white px-4 py-3 flex items-center justify-between border-b border-slate-700'>
+            <div className='flex items-center gap-2'>
+              <Bot className='w-5 h-5' />
+              <span className='font-medium'>
+                Form Assistant ({currentStepIndex + 1}/{conversationSteps.length})
+              </span>
+            </div>
+            <ThemeToggle />
           </div>
 
-          {/* Speech Controls */}
+          {/* Speech Controls — subtle dark tone instead of bright green */}
           {speechEnabled && (
-            <div className='bg-green-600 text-white px-4 py-2 flex items-center justify-between'>
+            <div className='bg-slate-700 dark:bg-slate-800 text-slate-200 px-4 py-2 flex items-center justify-between border-b border-slate-600'>
               <div className='flex items-center gap-2'>
                 <Volume2 className='w-4 h-4' />
                 <span className='text-sm font-medium'>Speech Controls</span>
@@ -1601,7 +1592,7 @@ Examples:
                 <select
                   value={selectedVoice}
                   onChange={(e) => setSelectedVoice(e.target.value)}
-                  className='text-xs bg-green-700 text-white border-0 rounded px-2 py-1'
+                  className='text-xs bg-slate-600 dark:bg-slate-700 text-white border-0 rounded px-2 py-1'
                   aria-label='Select voice for text-to-speech'
                   disabled={!speechEnabled}>
                   {Object.entries(voices).map(
@@ -1642,7 +1633,7 @@ Examples:
                   onClick={() => setSpeechEnabled(!speechEnabled)}
                   variant='outline'
                   size='sm'
-                  className='h-6 px-2 text-white border-white hover:bg-white hover:text-green-600'>
+                  className='h-6 px-2 text-white border-white/30 hover:bg-slate-500 hover:text-white'>
                   {speechEnabled ? (
                     <VolumeX className='w-3 h-3' />
                   ) : (
@@ -1653,10 +1644,10 @@ Examples:
             </div>
           )}
 
-          {/* Voice Guided Mode Controls */}
-          <div className='bg-gray-50 px-4 py-2 border-b'>
+          {/* Voice Guided Mode Controls — consistent dark tone */}
+          <div className='bg-slate-800 dark:bg-slate-900 px-4 py-2 border-b border-slate-700'>
             <div className='flex items-center justify-between'>
-              <span className='text-sm font-medium text-gray-700'>
+              <span className='text-sm font-medium text-slate-200'>
                 Voice Guided Mode
               </span>
               {!voiceGuidedMode ? (
@@ -1678,7 +1669,7 @@ Examples:
               )}
             </div>
             {voiceGuidedMode && (
-              <p className='text-xs text-gray-600 mt-1'>
+              <p className='text-xs text-slate-400 mt-1'>
                 Questions will be read aloud. Speak your answers after each
                 question.
               </p>
@@ -1686,9 +1677,9 @@ Examples:
           </div>
 
           {/* Progress Bar */}
-          <div className='bg-gray-200 h-1'>
+          <div className='bg-slate-800 dark:bg-slate-900 h-1'>
             <div
-              className='bg-blue-600 h-1 transition-all duration-300'
+              className='bg-blue-500 h-1 transition-all duration-300'
               style={
                 {
                   width: `${((currentStepIndex + 1) / conversationSteps.length) * 100}%`,
@@ -1709,7 +1700,7 @@ Examples:
                   className={`max-w-xs px-3 py-2 rounded-lg ${
                     message.type === "user"
                       ? "bg-blue-600 text-white"
-                      : "bg-gray-100 text-gray-800"
+                      : "bg-muted/70 dark:bg-slate-950 text-foreground"
                   }`}>
                   <p className='text-sm'>{message.message}</p>
                   {message.type === "bot" && speechEnabled && (
@@ -1718,7 +1709,7 @@ Examples:
                         onClick={() =>
                           textToSpeech(message.message, message.id)
                         }
-                        className='p-1 hover:bg-gray-200 rounded-full transition-colors'
+                        className='p-1 hover:bg-muted/80 dark:hover:bg-slate-800 rounded-full transition-colors'
                         title='Read this message'
                         disabled={
                           isPlaying && currentPlayingMessage === message.id
@@ -1726,7 +1717,7 @@ Examples:
                         {isPlaying && currentPlayingMessage === message.id ? (
                           <VolumeX className='w-3 h-3 text-red-500' />
                         ) : (
-                          <Volume2 className='w-3 h-3 text-gray-500 hover:text-gray-700' />
+                          <Volume2 className='w-3 h-3 text-muted-foreground hover:text-foreground' />
                         )}
                       </button>
                     </div>
@@ -1736,16 +1727,16 @@ Examples:
             ))}
             {chatLoading && (
               <div className='flex justify-start'>
-                <div className='bg-gray-100 px-3 py-2 rounded-lg'>
+                <div className='bg-muted/70 px-3 py-2 rounded-lg dark:bg-slate-950'>
                   <div className='flex space-x-1'>
-                    <div className='w-2 h-2 bg-gray-400 rounded-full animate-bounce'></div>
+                    <div className='w-2 h-2 bg-muted/70 dark:bg-slate-600 rounded-full animate-bounce'></div>
                     <div
-                      className='w-2 h-2 bg-gray-400 rounded-full animate-bounce'
+                      className='w-2 h-2 bg-muted/70 dark:bg-slate-600 rounded-full animate-bounce'
                       style={
                         { animationDelay: "0.1s" } as React.CSSProperties
                       }></div>
                     <div
-                      className='w-2 h-2 bg-gray-400 rounded-full animate-bounce'
+                      className='w-2 h-2 bg-muted/70 dark:bg-slate-600 rounded-full animate-bounce'
                       style={
                         { animationDelay: "0.2s" } as React.CSSProperties
                       }></div>
@@ -1756,7 +1747,7 @@ Examples:
           </div>
 
           {/* Chat Input */}
-          <form onSubmit={handleChatSubmit} className='border-t p-3'>
+          <form onSubmit={handleChatSubmit} className='border-t border-slate-700 p-3'>
             <div className='flex gap-2'>
               <input
                 type='text'
@@ -1767,7 +1758,7 @@ Examples:
                     ? "All questions completed!"
                     : "Your answer..."
                 }
-                className='flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
+                className='flex-1 px-3 py-2 border border-input bg-background text-foreground dark:bg-slate-950 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
                 disabled={
                   chatLoading || currentStepIndex >= conversationSteps.length
                 }
@@ -1779,7 +1770,7 @@ Examples:
                   !chatInput.trim() ||
                   currentStepIndex >= conversationSteps.length
                 }
-                className='bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white p-2 rounded-md transition-colors'
+                className='bg-blue-600 hover:bg-blue-700 disabled:bg-muted/40 text-white p-2 rounded-md transition-colors'
                 title='Send message'
                 aria-label='Send message'>
                 <Send className='w-4 h-4' />
@@ -1802,7 +1793,7 @@ Examples:
             <form onSubmit={handleSubmit} className='space-y-6'>
               {/* Essential Fields */}
               <div className='space-y-6'>
-                <h3 className='text-xl font-semibold text-gray-800 border-b pb-2'>
+                <h3 className='text-xl font-semibold text-foreground border-b pb-2'>
                   Essential Information
                 </h3>
 
@@ -1833,7 +1824,8 @@ Examples:
                       onChange={(e) =>
                         handleInputChange("username", e.target.value)
                       }
-                      className='text-lg h-12'
+                      className='text-lg h-12 dark:[color-scheme:dark]'
+                      autoComplete='username'
                       required
                     />
                   </div>
@@ -1861,10 +1853,10 @@ Examples:
                       onValueChange={(value) =>
                         handleInputChange("gender", value)
                       }>
-                      <SelectTrigger className='h-12 text-lg bg-white'>
+                      <SelectTrigger className='h-12 text-lg bg-background text-foreground dark:bg-slate-950 dark:text-white'>
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className='bg-white'>
+                      <SelectContent className='bg-popover text-popover-foreground border border-input dark:border-slate-800 shadow-lg z-50'>
                         <SelectItem value='Male'>Male</SelectItem>
                         <SelectItem value='Female'>Female</SelectItem>
                         <SelectItem value='Other'>Other</SelectItem>
@@ -1881,10 +1873,10 @@ Examples:
                       onValueChange={(value) =>
                         handleInputChange("country", value)
                       }>
-                      <SelectTrigger className='h-12 text-lg bg-white'>
+                      <SelectTrigger className='h-12 text-lg bg-background text-foreground dark:bg-slate-950 dark:text-white'>
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className='bg-white'>
+                      <SelectContent className='bg-popover text-popover-foreground border border-input dark:border-slate-800 shadow-lg z-50'>
                         <SelectItem value='Australia'>Australia</SelectItem>
                         <SelectItem value='New Zealand'>New Zealand</SelectItem>
                         <SelectItem value='United Kingdom'>
@@ -1996,10 +1988,10 @@ Examples:
                       onValueChange={(value) =>
                         handleInputChange("risk_tolerance", value)
                       }>
-                      <SelectTrigger className='h-12 text-lg bg-white'>
+                      <SelectTrigger className='h-12 text-lg bg-background text-foreground dark:bg-slate-950 dark:text-white'>
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className='bg-white'>
+                      <SelectContent className='bg-popover text-popover-foreground border border-input dark:border-slate-800 shadow-lg z-50'>
                         <SelectItem value='Low'>Low Risk</SelectItem>
                         <SelectItem value='Medium'>Medium Risk</SelectItem>
                         <SelectItem value='High'>High Risk</SelectItem>
@@ -2018,10 +2010,10 @@ Examples:
                       onValueChange={(value) =>
                         handleInputChange("investment_experience_level", value)
                       }>
-                      <SelectTrigger className='h-12 text-lg bg-white'>
+                      <SelectTrigger className='h-12 text-lg bg-background text-foreground dark:bg-slate-950 dark:text-white'>
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className='bg-white'>
+                      <SelectContent className='bg-popover text-popover-foreground border border-input dark:border-slate-800 shadow-lg z-50'>
                         <SelectItem value='Beginner'>Beginner</SelectItem>
                         <SelectItem value='Intermediate'>
                           Intermediate
@@ -2039,10 +2031,10 @@ Examples:
                       onValueChange={(value) =>
                         handleInputChange("marital_status", value)
                       }>
-                      <SelectTrigger className='h-12 text-lg bg-white'>
+                      <SelectTrigger className='h-12 text-lg bg-background text-foreground dark:bg-slate-950 dark:text-white'>
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className='bg-white'>
+                      <SelectContent className='bg-popover text-popover-foreground border border-input dark:border-slate-800 shadow-lg z-50'>
                         <SelectItem value='Single'>Single</SelectItem>
                         <SelectItem value='Married'>Married</SelectItem>
                         <SelectItem value='Divorced'>Divorced</SelectItem>
@@ -2085,8 +2077,9 @@ Examples:
                       onChange={(e) =>
                         handleInputChange("password", e.target.value)
                       }
-                      className='text-lg h-12'
+                      className='text-lg h-12 dark:[color-scheme:dark]'
                       placeholder='Create a secure password (min 6 characters)'
+                      autoComplete='new-password'
                       required
                       minLength={6}
                     />
@@ -2110,10 +2103,10 @@ Examples:
               {/* Advanced Fields */}
               {showAdvancedFields && (
                 <div className='space-y-6 border-t pt-6'>
-                  <h3 className='text-xl font-semibold text-gray-800 border-b pb-2'>
+                  <h3 className='text-xl font-semibold text-foreground border-b pb-2'>
                     Additional Information (Optional)
                   </h3>
-                  <p className='text-sm text-gray-600 mb-4'>
+                  <p className='text-sm text-muted-foreground mb-4'>
                     These fields help improve our ML models and provide more
                     personalized recommendations. All fields are optional.
                   </p>
@@ -2173,10 +2166,10 @@ Examples:
                         onValueChange={(value) =>
                           handleInputChange("investment_type", value)
                         }>
-                        <SelectTrigger className='h-12 text-lg bg-white'>
+                        <SelectTrigger className='h-12 text-lg bg-background text-foreground dark:bg-slate-950 dark:text-white'>
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent className='bg-white'>
+                        <SelectContent className='bg-popover text-popover-foreground border border-input dark:border-slate-800 shadow-lg z-50'>
                           <SelectItem value='Stocks'>Stocks</SelectItem>
                           <SelectItem value='Bonds'>Bonds</SelectItem>
                           <SelectItem value='Mutual Fund'>
@@ -2199,10 +2192,10 @@ Examples:
                         onValueChange={(value) =>
                           handleInputChange("financial_goals", value)
                         }>
-                        <SelectTrigger className='h-12 text-lg bg-white'>
+                        <SelectTrigger className='h-12 text-lg bg-background text-foreground dark:bg-slate-950 dark:text-white'>
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent className='bg-white'>
+                        <SelectContent className='bg-popover text-popover-foreground border border-input dark:border-slate-800 shadow-lg z-50'>
                           <SelectItem value='Retirement'>Retirement</SelectItem>
                           <SelectItem value='Education'>Education</SelectItem>
                           <SelectItem value='Home'>Home</SelectItem>
@@ -2223,10 +2216,10 @@ Examples:
                         onValueChange={(value) =>
                           handleInputChange("employment_status", value)
                         }>
-                        <SelectTrigger className='h-12 text-lg bg-white'>
+                        <SelectTrigger className='h-12 text-lg bg-background text-foreground dark:bg-slate-950 dark:text-white'>
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent className='bg-white'>
+                        <SelectContent className='bg-popover text-popover-foreground border border-input dark:border-slate-800 shadow-lg z-50'>
                           <SelectItem value='Full-time'>Full-time</SelectItem>
                           <SelectItem value='Part-time'>Part-time</SelectItem>
                           <SelectItem value='Unemployed'>Unemployed</SelectItem>
@@ -2246,10 +2239,10 @@ Examples:
                         onValueChange={(value) =>
                           handleInputChange("education_level", value)
                         }>
-                        <SelectTrigger className='h-12 text-lg bg-white'>
+                        <SelectTrigger className='h-12 text-lg bg-background text-foreground dark:bg-slate-950 dark:text-white'>
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent className='bg-white'>
+                        <SelectContent className='bg-popover text-popover-foreground border border-input dark:border-slate-800 shadow-lg z-50'>
                           <SelectItem value='High School'>
                             High School
                           </SelectItem>
@@ -2272,10 +2265,10 @@ Examples:
                         onValueChange={(value) =>
                           handleInputChange("health_status", value)
                         }>
-                        <SelectTrigger className='h-12 text-lg bg-white'>
+                        <SelectTrigger className='h-12 text-lg bg-background text-foreground dark:bg-slate-950 dark:text-white'>
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent className='bg-white'>
+                        <SelectContent className='bg-popover text-popover-foreground border border-input dark:border-slate-800 shadow-lg z-50'>
                           <SelectItem value='Excellent'>Excellent</SelectItem>
                           <SelectItem value='Good'>Good</SelectItem>
                           <SelectItem value='Fair'>Fair</SelectItem>
@@ -2292,10 +2285,10 @@ Examples:
                         onValueChange={(value) =>
                           handleInputChange("home_ownership_status", value)
                         }>
-                        <SelectTrigger className='h-12 text-lg bg-white'>
+                        <SelectTrigger className='h-12 text-lg bg-background text-foreground dark:bg-slate-950 dark:text-white'>
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent className='bg-white'>
+                        <SelectContent className='bg-popover text-popover-foreground border border-input dark:border-slate-800 shadow-lg z-50'>
                           <SelectItem value='Own'>Own</SelectItem>
                           <SelectItem value='Rent'>Rent</SelectItem>
                           <SelectItem value='Other'>Other</SelectItem>
@@ -2314,10 +2307,10 @@ Examples:
                         onValueChange={(value) =>
                           handleInputChange("insurance_coverage", value)
                         }>
-                        <SelectTrigger className='h-12 text-lg bg-white'>
+                        <SelectTrigger className='h-12 text-lg bg-background text-foreground dark:bg-slate-950 dark:text-white'>
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent className='bg-white'>
+                        <SelectContent className='bg-popover text-popover-foreground border border-input dark:border-slate-800 shadow-lg z-50'>
                           <SelectItem value='Yes'>Yes</SelectItem>
                           <SelectItem value='No'>No</SelectItem>
                           <SelectItem value='Partial'>Partial</SelectItem>
@@ -2333,10 +2326,10 @@ Examples:
                         onValueChange={(value) =>
                           handleInputChange("pension_type", value)
                         }>
-                        <SelectTrigger className='h-12 text-lg bg-white'>
+                        <SelectTrigger className='h-12 text-lg bg-background text-foreground dark:bg-slate-950 dark:text-white'>
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent className='bg-white'>
+                        <SelectContent className='bg-popover text-popover-foreground border border-input dark:border-slate-800 shadow-lg z-50'>
                           <SelectItem value='Defined Contribution'>
                             Defined Contribution
                           </SelectItem>
@@ -2355,10 +2348,10 @@ Examples:
                         onValueChange={(value) =>
                           handleInputChange("debt_level", value)
                         }>
-                        <SelectTrigger className='h-12 text-lg bg-white'>
+                        <SelectTrigger className='h-12 text-lg bg-background text-foreground dark:bg-slate-950 dark:text-white'>
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent className='bg-white'>
+                        <SelectContent className='bg-popover text-popover-foreground border border-input dark:border-slate-800 shadow-lg z-50'>
                           <SelectItem value='Low'>Low</SelectItem>
                           <SelectItem value='Medium'>Medium</SelectItem>
                           <SelectItem value='High'>High</SelectItem>

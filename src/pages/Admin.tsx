@@ -12,6 +12,7 @@ import { useNavigate } from "react-router-dom";
 import { adminService } from "@/services/adminService";
 import { AdminLoginModal } from "@/components/auth/AdminLoginModal";
 import { UserProfile } from "@/services/dataService";
+import { useTheme } from "@/contexts/ThemeContext";
 
 interface ExtendedUserProfile extends UserProfile {
   username?: string;
@@ -21,6 +22,7 @@ interface ExtendedUserProfile extends UserProfile {
 
 export default function Admin() {
   const navigate = useNavigate();
+  const { ThemeToggle } = useTheme();
   const [users, setUsers] = useState<ExtendedUserProfile[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<ExtendedUserProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -153,7 +155,7 @@ export default function Admin() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-background via-blue-50 to-indigo-100 dark:from-background dark:via-slate-900 dark:to-slate-800 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
           <p>Loading user data...</p>
@@ -172,12 +174,12 @@ export default function Admin() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-background via-blue-50 to-indigo-100 dark:from-background dark:via-slate-900 dark:to-slate-800 p-4">
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="text-center">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Admin Dashboard</h1>
-          <p className="text-xl text-gray-600">Manage and view user profiles</p>
-          <div className="mt-4 flex justify-center gap-4">
+          <h1 className="text-4xl font-bold text-foreground mb-2">Admin Dashboard</h1>
+          <p className="text-xl text-muted-foreground">Manage and view user profiles</p>
+          <div className="mt-4 flex justify-center gap-4 items-center">
             <Button 
               onClick={() => window.location.href = '/user-manager'}
               className="flex items-center gap-2"
@@ -194,6 +196,7 @@ export default function Admin() {
               <LogOut className="w-4 h-4" />
               Logout
             </Button>
+            <ThemeToggle />
           </div>
         </div>
 
@@ -209,7 +212,7 @@ export default function Admin() {
             <CardContent className="p-6 text-center">
               <User className="h-8 w-8 mx-auto mb-2 text-blue-600" />
               <div className="text-2xl font-bold">{users.length}</div>
-              <div className="text-sm text-gray-600">Total Users</div>
+              <div className="text-sm text-muted-foreground">Total Users</div>
             </CardContent>
           </Card>
           <Card>
@@ -218,7 +221,7 @@ export default function Admin() {
               <div className="text-2xl font-bold">
                 {formatCurrency(users.reduce((sum, user) => sum + user.Annual_Income, 0))}
               </div>
-              <div className="text-sm text-gray-600">Total Annual Income</div>
+              <div className="text-sm text-muted-foreground">Total Annual Income</div>
             </CardContent>
           </Card>
           <Card>
@@ -227,7 +230,7 @@ export default function Admin() {
               <div className="text-2xl font-bold">
                 {formatCurrency(users.reduce((sum, user) => sum + user.Current_Savings, 0))}
               </div>
-              <div className="text-sm text-gray-600">Total Savings</div>
+              <div className="text-sm text-muted-foreground">Total Savings</div>
             </CardContent>
           </Card>
           <Card>
@@ -236,7 +239,7 @@ export default function Admin() {
               <div className="text-2xl font-bold">
                 {users.length > 0 ? Math.round(users.reduce((sum, user) => sum + user.Age, 0) / users.length) : 0}
               </div>
-              <div className="text-sm text-gray-600">Average Age</div>
+              <div className="text-sm text-muted-foreground">Average Age</div>
             </CardContent>
           </Card>
         </div>
@@ -252,7 +255,7 @@ export default function Admin() {
               <div className="flex-1">
                 <Label htmlFor="search">Search Users</Label>
                 <div className="relative">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="search"
                     placeholder="Search by name or email..."
@@ -268,13 +271,13 @@ export default function Admin() {
                   <SelectTrigger className="h-12">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="bg-white border border-gray-200 shadow-lg z-50">
-                    <SelectItem value="all" className="hover:bg-gray-100">All Users</SelectItem>
-                    <SelectItem value="high_income" className="hover:bg-gray-100">High Income (≥$100k)</SelectItem>
-                    <SelectItem value="high_savings" className="hover:bg-gray-100">High Savings (≥$50k)</SelectItem>
-                    <SelectItem value="high_risk" className="hover:bg-gray-100">High Risk Tolerance</SelectItem>
-                    <SelectItem value="married" className="hover:bg-gray-100">Married</SelectItem>
-                    <SelectItem value="with_dependents" className="hover:bg-gray-100">With Dependents</SelectItem>
+                  <SelectContent className="bg-popover text-popover-foreground border border-input dark:border-slate-800 shadow-lg z-50">
+                    <SelectItem value="all" className="hover:bg-accent/20 dark:hover:bg-accent/30">All Users</SelectItem>
+                    <SelectItem value="high_income" className="hover:bg-accent/20 dark:hover:bg-accent/30">High Income (≥$100k)</SelectItem>
+                    <SelectItem value="high_savings" className="hover:bg-accent/20 dark:hover:bg-accent/30">High Savings (≥$50k)</SelectItem>
+                    <SelectItem value="high_risk" className="hover:bg-accent/20 dark:hover:bg-accent/30">High Risk Tolerance</SelectItem>
+                    <SelectItem value="married" className="hover:bg-accent/20 dark:hover:bg-accent/30">Married</SelectItem>
+                    <SelectItem value="with_dependents" className="hover:bg-accent/20 dark:hover:bg-accent/30">With Dependents</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -329,7 +332,7 @@ export default function Admin() {
             </div>
 
             {filteredUsers.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-muted-foreground">
                 No users found matching your criteria.
               </div>
             )}

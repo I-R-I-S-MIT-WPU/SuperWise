@@ -6,6 +6,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { UserSelectionPanel } from "@/components/dashboard/UserSelectionPanel";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { ArrowLeft, User, Mail, Calendar, DollarSign, TrendingUp, Shield } from "lucide-react";
+import { useTheme } from "@/contexts/ThemeContext";
 
 export default function UserManager() {
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
@@ -13,6 +14,7 @@ export default function UserManager() {
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   const { loginAsUser } = useAdminAuth();
+  const { ThemeToggle } = useTheme();
 
   const handleUserSelect = (user: any) => {
     setSelectedUser(user);
@@ -78,22 +80,25 @@ export default function UserManager() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-background via-blue-50 to-indigo-100 dark:from-background dark:via-slate-900 dark:to-slate-800 p-4">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">User Manager</h1>
-            <p className="text-xl text-gray-600">Select and manage user accounts</p>
+            <h1 className="text-4xl font-bold text-foreground mb-2">User Manager</h1>
+            <p className="text-xl text-muted-foreground">Select and manage user accounts</p>
           </div>
-          <Button 
-            onClick={() => navigate('/admin')}
-            variant="outline"
-            className="flex items-center gap-2"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Admin
-          </Button>
+          <div className="flex items-center gap-4">
+            <ThemeToggle />
+            <Button 
+              onClick={() => navigate('/admin')}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to Admin
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

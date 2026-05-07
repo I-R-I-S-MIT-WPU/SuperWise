@@ -172,6 +172,27 @@
   button:active {
     transform: translateY(0);
   }
+
+  /* Fix browser autofill overriding dark mode input background */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 1000px hsl(223, 18%, 12%) inset !important;
+    -webkit-text-fill-color: hsl(0, 0%, 96%) !important;
+    caret-color: hsl(0, 0%, 96%) !important;
+    transition: background-color 5000s ease-in-out 0s;
+  }
+
+  /* Light mode autofill */
+  :root:not(.dark) input:-webkit-autofill,
+  :root:not(.dark) input:-webkit-autofill:hover,
+  :root:not(.dark) input:-webkit-autofill:focus,
+  :root:not(.dark) input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 1000px hsl(0, 0%, 97%) inset !important;
+    -webkit-text-fill-color: hsl(0, 0%, 10%) !important;
+    caret-color: hsl(0, 0%, 10%) !important;
+  }
   
   /* Card styling */
   .card-shadow { box-shadow: var(--shadow-card); }

@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, Loader2, X } from 'lucide-react';
 import { adminService } from '@/services/adminService';
+import { useTheme } from "@/contexts/ThemeContext";
 
 interface AdminLoginModalProps {
   onClose: () => void;
@@ -16,6 +17,7 @@ export function AdminLoginModal({ onClose, onSuccess }: AdminLoginModalProps) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { ThemeToggle } = useTheme();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,10 +42,10 @@ export function AdminLoginModal({ onClose, onSuccess }: AdminLoginModalProps) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg w-full max-w-md relative">
+      <div className="bg-card rounded-lg w-full max-w-md relative border">
         <button 
           onClick={onClose}
-          className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
+          className="absolute top-4 right-4 text-muted-foreground hover:text-foreground"
           disabled={loading}
           aria-label="Close"
           title="Close"
@@ -51,8 +53,12 @@ export function AdminLoginModal({ onClose, onSuccess }: AdminLoginModalProps) {
           <X className="h-5 w-5" />
         </button>
 
+        <div className="absolute top-4 left-4">
+          <ThemeToggle />
+        </div>
+
         <div className="p-6">
-          <h2 className="text-2xl font-bold mb-6 text-gray-900">Admin Login</h2>
+          <h2 className="text-2xl font-bold mb-6 text-foreground">Admin Login</h2>
           
           {error && (
             <Alert variant="destructive" className="mb-4">

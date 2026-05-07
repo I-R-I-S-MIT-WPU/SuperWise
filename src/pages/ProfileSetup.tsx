@@ -8,10 +8,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2 } from "lucide-react";
 import { supabase, UserProfile } from "@/lib/supabase";
+import { useTheme } from "@/contexts/ThemeContext";
 
 export default function ProfileSetup() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { ThemeToggle } = useTheme();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [user, setUser] = useState<any>(null);
@@ -94,15 +96,18 @@ export default function ProfileSetup() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-background via-blue-50 to-indigo-100 dark:from-background dark:via-slate-900 dark:to-slate-800 flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-background via-blue-50 to-indigo-100 dark:from-background dark:via-slate-900 dark:to-slate-800 p-4">
       <div className="max-w-4xl mx-auto">
+        <div className="flex justify-end mb-4">
+          <ThemeToggle />
+        </div>
         <Card>
           <CardHeader className="text-center">
             <CardTitle className="text-3xl font-bold">Complete Your Profile</CardTitle>
